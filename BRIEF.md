@@ -89,6 +89,18 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI:
 ### ✅ GIAI ĐOẠN 3 HOÀN THÀNH (4/4) — 2026-07-17
 Landing hoàn chỉnh khớp mockup: header/hero/trust/collection(3 hộp)/corporate/craft/flavors(4 bánh)/testimonials/footer + bottom sheet form đặt hàng → POST /leads → admin + Telegram. Website có trang chủ chạy được, khách đặt hàng được. design-evaluator ≥8/10 mọi task UI.
 
+## Giai đoạn 4 — Auth Admin + API Admin
+
+Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API → qa-evaluator held-out trước, generator không đọc. security-review cuối GĐ.
+
+1. [ ] Task 1 — Migrations customers/orders/order_items + leads.order_id + sqlc (REQ-CUST/ORD/LEAD schema)
+2. [ ] Task 2 — Auth: login JWT httpOnly + middleware + proxy guard (REQ-AUTH-001/002/003/004)
+3. [ ] Task 3 — Admin products CRUD + upload ảnh (REQ-PROD-002/003)
+4. [ ] Task 4 — Admin leads list paginated + status + convert→order (REQ-LEAD-004/005)
+5. [ ] Task 5 — Admin orders create(transaction+snapshot) + list + status + Telegram (REQ-ORD, REQ-NOTI-002)
+6. [ ] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
+7. [ ] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
+
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
 0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch. (Cân nhắc: hoặc browser gọi /api same-origin qua Caddy thay vì Server Action.)
