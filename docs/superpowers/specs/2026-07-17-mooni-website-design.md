@@ -20,7 +20,7 @@ Monorepo, VPS + Docker Compose:
 
 | Thành phần | Công nghệ | Ghi chú |
 |---|---|---|
-| `web/` | Next.js 15 App Router, Tailwind CSS, shadcn/ui (admin) | Public site + admin UI. Server Components mặc định. |
+| `web/` | Next.js 16 App Router (Turbopack), Tailwind CSS, shadcn/ui (admin) | Public site + admin UI. Server Components mặc định. Auth guard qua `proxy.ts`. |
 | `api/` | Go: chi router, pgx + sqlc, golang-migrate | REST JSON `/api/v1`. |
 | DB | PostgreSQL 16 (Docker volume + backup script) | |
 | Reverse proxy | Caddy (auto HTTPS) | Production. |

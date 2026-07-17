@@ -5,7 +5,8 @@ Website giới thiệu + đặt hàng qua lead form (KHÔNG có giỏ hàng/than
 ## Kiến trúc (Monorepo)
 
 ```
-web/    → Next.js 15 App Router + Tailwind CSS. Public site + admin UI tại /admin (shadcn/ui)
+web/    → Next.js 16 App Router (Turbopack) + Tailwind CSS. Public site + admin UI tại /admin (shadcn/ui)
+          Lưu ý Next 16: params/searchParams là async; auth guard dùng proxy.ts (middleware.ts đã deprecate)
 api/    → Go: chi router, pgx + sqlc, golang-migrate. REST JSON tại /api/v1
 design/ → Mockup HTML — NGUỒN CHÂN LÝ về UI. Không sửa file trong này.
 docs/   → Specs, plans, PROGRESS.md (handoff artifact)

@@ -22,7 +22,7 @@
 ## Quyết định đã chốt (không mở lại nếu không có lý do mới)
 
 - Không giỏ hàng/thanh toán online (tránh đăng ký TMĐT với Bộ Công Thương). Đặt hàng qua lead form.
-- Stack: Next.js 15 + Go (chi, pgx, sqlc) + PostgreSQL, monorepo, VPS + Docker.
+- Stack: Next.js 16 (quyết định 2026-07-17: bản stable hiện hành, Turbopack mặc định, dự án mới không có lý do dùng 15) + Go (chi, pgx, sqlc) + PostgreSQL, monorepo, VPS + Docker.
 - Lead mới → lưu DB **và** bắn Telegram Bot.
 - Admin quản lý: đơn hàng, leads, sản phẩm & tồn kho, khách hàng.
 - Mockup trong `design/` là nguồn chân lý UI, không sửa.
