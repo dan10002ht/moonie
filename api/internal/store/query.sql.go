@@ -60,3 +60,44 @@ func (q *Queries) GetAdminUserByEmail(ctx context.Context, email string) (AdminU
 	)
 	return i, err
 }
+
+const listVisibleProducts = `-- name: ListVisibleProducts :many
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at
+FROM products
+WHERE status != 'hidden'
+ORDER BY display_order, created_at
+`
+
+// Sản phẩm public: ẩn status='hidden', sắp theo thứ tự hiển thị rồi thời gian tạo
+// (REQ-PROD-001).
+func (q *Queries) ListVisibleProducts(ctx context.Context) ([]Product, error) {
+	rows, err := q.db.Query(ctx, listVisibleProducts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.Type,
+			&i.Status,
+			&i.ImageUrl,
+			&i.DisplayOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

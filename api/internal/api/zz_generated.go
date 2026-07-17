@@ -8,6 +8,20 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+// Defines values for ProductStatus.
+const (
+	Available ProductStatus = "available"
+	Hidden    ProductStatus = "hidden"
+	SoldOut   ProductStatus = "sold_out"
+)
+
+// Defines values for ProductType.
+const (
+	GiftBox    ProductType = "gift_box"
+	SingleCake ProductType = "single_cake"
 )
 
 // Health defines model for Health.
@@ -15,11 +29,35 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// Product defines model for Product.
+type Product struct {
+	Description  *string            `json:"description"`
+	DisplayOrder int                `json:"display_order"`
+	Id           openapi_types.UUID `json:"id"`
+	ImageUrl     *string            `json:"image_url"`
+	Name         string             `json:"name"`
+
+	// Price Giá VND, số nguyên
+	Price  int64         `json:"price"`
+	Slug   string        `json:"slug"`
+	Status ProductStatus `json:"status"`
+	Type   ProductType   `json:"type"`
+}
+
+// ProductStatus defines model for Product.Status.
+type ProductStatus string
+
+// ProductType defines model for Product.Type.
+type ProductType string
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Health check
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
+	// Danh sách sản phẩm public
+	// (GET /products)
+	ListProducts(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -29,6 +67,12 @@ type Unimplemented struct{}
 // Health check
 // (GET /healthz)
 func (_ Unimplemented) GetHealthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Danh sách sản phẩm public
+// (GET /products)
+func (_ Unimplemented) ListProducts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -46,6 +90,20 @@ func (siw *ServerInterfaceWrapper) GetHealthz(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealthz(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListProducts operation middleware
+func (siw *ServerInterfaceWrapper) ListProducts(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProducts(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -170,6 +228,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealthz)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/products", wrapper.ListProducts)
 	})
 
 	return r

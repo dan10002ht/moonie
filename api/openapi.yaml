@@ -21,8 +21,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /products:
+    get:
+      operationId: listProducts
+      summary: Danh sách sản phẩm public
+      description: >-
+        Trả về sản phẩm đang hiển thị (ẩn status='hidden'), sắp theo thứ tự hiển
+        thị. Public, không cần auth (REQ-PROD-001).
+      responses:
+        "200":
+          description: Danh sách sản phẩm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
 components:
   schemas:
+    Product:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - price
+        - type
+        - status
+        - display_order
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: integer
+          format: int64
+          description: Giá VND, số nguyên
+        type:
+          type: string
+          enum:
+            - gift_box
+            - single_cake
+        status:
+          type: string
+          enum:
+            - available
+            - sold_out
+            - hidden
+        image_url:
+          type: string
+          nullable: true
+        display_order:
+          type: integer
     Health:
       type: object
       required:

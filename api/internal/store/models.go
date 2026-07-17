@@ -16,3 +16,17 @@ type AdminUser struct {
 	Role         string             `json:"role"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
+
+type Product struct {
+	ID           pgtype.UUID        `json:"id"`
+	Slug         string             `json:"slug"`
+	Name         string             `json:"name"`
+	Description  *string            `json:"description"`
+	Price        int64              `json:"price"`
+	Type         string             `json:"type"`
+	Status       string             `json:"status"`
+	ImageUrl     *string            `json:"image_url"`
+	DisplayOrder int32              `json:"display_order"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
