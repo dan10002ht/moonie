@@ -161,7 +161,11 @@ Backlog UI: mobile-table card layout (recurring, không chặn — admin desktop
    - Files: api/cmd/server/main.go, api/internal/config/config.go, api/cmd/seed/main.go, api/cmd/server/security_test.go, api/cmd/seed/main_test.go, web/next.config.ts, .env.example (ALLOWED_ORIGIN).
    - Gate: HELD-OUT 12/12 (`tests/heldout/giai-doan-6-task-0b-security_test.sh` — A header toàn cục, B CSRF Origin→403, C seed prod-guard). go-reviewer VERDICT PASS (make lint 0, make test all, không bypass Origin/seed). 3 minor go-reviewer đã sửa.
    - Còn lại cho Task 1/deploy: reverse proxy ép HTTPS + HSTS (Caddy). JWT TTL ngắn/token version (L3) → backlog (không chặn launch).
-1. [ ] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
+1. [✅] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
+   - Files: `docker-compose.prod.yml` (postgres nội bộ + migrate/seed one-shot + api + web + caddy; env fail-fast `${VAR:?}`; TRUSTED_PROXIES=172.28.0.0/16 subnet cố định; chỉ Caddy expose 80/443), `Caddyfile` (auto HTTPS + HSTS + same-origin /api,/uploads→api, /→web), `api/Dockerfile.migrate`, `scripts/backup.sh`+`restore.sh` (pg_dump/pg_restore -Fc qua docker exec + rotation), `docs/runbook.md`, sửa `web/Dockerfile` (ARG NEXT_PUBLIC_API_BASE — Next inline lúc build), `.env.example` (mục PRODUCTION).
+   - Verify THẬT: `docker compose -f docker-compose.prod.yml config` VALID (fail-fast khi thiếu env); chỉ Caddy publish 80/443; backup/restore round-trip PASS (8→6→8 sản phẩm, sentinel khôi phục, admin nguyên vẹn); không placeholder.
+   - Chưa verify được (cần VPS/domain): cấp TLS Let's Encrypt thật, redirect 80→443, HSTS trên trình duyệt, SSR fetch qua https hairpin, `caddy validate` (ảnh không pull được ở đây).
+   - ✅ **Security-review milestone #2 (trước deploy)**: KHÔNG finding ≥8 confidence trên toàn bề mặt GĐ6 (CSRF/auth, resolver IP, routing, injection, secrets, XSS/CSP, container). Không blocker. (Note hardening dưới ngưỡng: CSP script-src 'unsafe-inline' không nonce → backlog.)
 
 ## Backlog ý tưởng (chưa thành task)
 

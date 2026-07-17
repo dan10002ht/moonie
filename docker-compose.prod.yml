@@ -1,0 +1,171 @@
+# docker-compose.prod.yml — Stack PRODUCTION Mooni Cake
+# =============================================================================
+# postgres (nội bộ) + migrate/seed (one-shot) + api (Go) + web (Next.js) + caddy
+# (reverse proxy, auto HTTPS Let's Encrypt). CHỈ Caddy expose 80/443 ra ngoài.
+#
+# Cách chạy (xem docs/runbook.md để đầy đủ):
+#   1. Tạo .env (KHÔNG commit) với đủ biến bên dưới — xem .env.example.
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+#   3. Kiểm log migrate/seed: docker compose -f docker-compose.prod.yml logs migrate seed
+#
+# Mọi secret lấy từ .env qua ${VAR}. Các biến BẮT BUỘC dùng ${VAR:?...} → thiếu
+# thì `docker compose ... up/config` DỪNG ngay (fail-fast, không boot cấu hình hở).
+# =============================================================================
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  # KHÔNG map port ra host: DB chỉ truy cập trong mạng compose. Volume bền
+  # `pgdata` giữ dữ liệu qua các lần redeploy. Healthcheck để migrate/seed/api
+  # chờ DB sẵn sàng thật (không chỉ container "started").
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mooni}
+      POSTGRES_DB: ${POSTGRES_DB:-mooni}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD bắt buộc (đặt trong .env)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - moonie
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mooni} -d ${POSTGRES_DB:-mooni}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── One-shot: migrate (áp schema) ──────────────────────────────────────────
+  # Chạy `migrate up` rồi thoát. api PHỤ THUỘC job này hoàn tất (schema là điều
+  # kiện cứng để server chạy). Idempotent: không có migration mới → no-op.
+  migrate:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.migrate
+    restart: "no"
+    command: ["/app/migrate", "up"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mooni}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD bắt buộc}@postgres:5432/${POSTGRES_DB:-mooni}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - moonie
+
+  # ── One-shot: seed (admin + sản phẩm mẫu) ──────────────────────────────────
+  # Chạy sau migrate. Idempotent (ON CONFLICT). KHÔNG chặn api khởi động: nếu
+  # seed lỗi (vd thiếu SEED_ADMIN_PASSWORD mạnh) thì site public vẫn chạy, chỉ
+  # là chưa có admin — sửa env rồi chạy lại: docker compose -f docker-compose.prod.yml run --rm seed
+  # APP_ENV=production BẮT BUỘC seed từ chối mật khẩu mặc định / <12 ký tự.
+  seed:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.migrate
+    restart: "no"
+    command: ["/app/seed"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mooni}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD bắt buộc}@postgres:5432/${POSTGRES_DB:-mooni}?sslmode=disable
+      APP_ENV: production
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD bắt buộc ≥12 ký tự khi seed production}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - moonie
+
+  # ── API Go ─────────────────────────────────────────────────────────────────
+  # KHÔNG map port ra host: chỉ Caddy (trong mạng compose) gọi được api:8080.
+  # APP_ENV=production hardcode → bật cờ Secure cookie + seed guard, không phụ
+  # thuộc .env (chống footgun quên set). uploads mount volume bền (ảnh sản phẩm
+  # nằm trong backup filesystem — xem runbook).
+  #
+  # ⚠️ TRUSTED_PROXIES: phải chứa dải mạng compose để api TIN X-Forwarded-For từ
+  # Caddy/Next (lấy IP khách thật cho rate-limit). Mạng `moonie` cố định subnet
+  # 172.28.0.0/16 (dưới) nên default trust đúng dải đó. Để trống ở prod = toàn
+  # site bị rate-limit theo IP proxy (footgun — xem BRIEF GĐ6 Task 0).
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mooni}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD bắt buộc}@postgres:5432/${POSTGRES_DB:-mooni}?sslmode=disable
+      APP_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET bắt buộc ≥32 ký tự, không placeholder}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.28.0.0/16}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:?ALLOWED_ORIGIN bắt buộc (vd https://mooni.vn) — CSRF allowlist}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      UPLOADS_DIR: /app/uploads
+      PORT: "8080"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - moonie
+
+  # ── Web Next.js ────────────────────────────────────────────────────────────
+  # KHÔNG map port ra host: chỉ Caddy gọi web:3000. NEXT_PUBLIC_API_BASE là biến
+  # BUILD-TIME (Next inline vào bundle + CSP) → truyền qua build.args, KHÔNG phải
+  # environment. Trỏ origin công khai qua Caddy để: (a) ảnh /uploads load same-origin
+  # từ trình duyệt, (b) CSP img-src/connect-src (next.config.ts) khớp origin thật,
+  # (c) Server Action/RSC fetch API qua HTTPS. Cần cert đã cấp (Caddy provision xong).
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_BASE: https://${DOMAIN:?DOMAIN bắt buộc (vd mooni.vn)}/api/v1
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - moonie
+    healthcheck:
+      # node 20 có global fetch; standalone image không có curl/wget.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Caddy (reverse proxy + auto HTTPS) ─────────────────────────────────────
+  # Service DUY NHẤT expose ra ngoài (80 redirect→443, 443 TLS). Tự cấp + gia hạn
+  # cert Let's Encrypt cho {$DOMAIN}. Volume caddy_data giữ cert qua redeploy
+  # (KHÔNG xóa — tránh chạm rate-limit cấp cert của Let's Encrypt).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 (QUIC)
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN bắt buộc (vd mooni.vn)}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL bắt buộc — email nhận cảnh báo cert Let's Encrypt}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    networks:
+      - moonie
+
+networks:
+  # Subnet CỐ ĐỊNH để TRUSTED_PROXIES trust đúng dải nội bộ (Caddy + Next đều
+  # nằm trong đây → api tin X-Forwarded-For từ chúng). Đổi subnet thì đổi cả
+  # default TRUSTED_PROXIES của service api ở trên.
+  moonie:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

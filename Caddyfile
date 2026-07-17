@@ -1,0 +1,41 @@
+# Caddyfile — reverse proxy same-origin + auto HTTPS cho Mooni Cake
+# =============================================================================
+# {$DOMAIN} và {$ACME_EMAIL} lấy từ env (đặt trong docker-compose.prod.yml từ .env).
+# Caddy tự cấp + gia hạn cert Let's Encrypt cho {$DOMAIN} và tự redirect 80→443.
+# =============================================================================
+
+{
+	# Email đăng ký ACME (Let's Encrypt) — nhận cảnh báo hết hạn cert.
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# Nén phản hồi text (html/css/js/json).
+	encode zstd gzip
+
+	# HSTS: ép trình duyệt chỉ dùng HTTPS trong 1 năm (gồm subdomain, preload).
+	# App (api + web) KHÔNG tự set Strict-Transport-Security (nó là mối quan tâm
+	# transport, chỉ có nghĩa sau khi Caddy terminate TLS) → thêm ở đây, KHÔNG bị
+	# trùng lặp. Các header còn lại (nosniff, X-Frame-Options, Referrer-Policy,
+	# CSP) do app đã set — KHÔNG lặp lại ở Caddy để tránh header nhân đôi.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+	# /api/* → API Go (giữ NGUYÊN path: Go mount OpenAPI tại /api/v1, KHÔNG strip).
+	# Caddy reverse_proxy mặc định set X-Forwarded-For (IP client) + X-Forwarded-Proto
+	# + X-Forwarded-Host. api TIN các header này vì peer (Caddy) nằm trong
+	# TRUSTED_PROXIES (dải 172.28.0.0/16) → lấy IP khách thật cho rate-limit.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# /uploads/* → API Go phục vụ ảnh sản phẩm tĩnh (mount ở root, ngoài /api/v1).
+	# Same-origin nên trình duyệt tải ảnh qua chính {$DOMAIN} (khớp CSP img-src).
+	handle /uploads/* {
+		reverse_proxy api:8080
+	}
+
+	# Phần còn lại → Next.js (landing + /admin).
+	handle {
+		reverse_proxy web:3000
+	}
+}

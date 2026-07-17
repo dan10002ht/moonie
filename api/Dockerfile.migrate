@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1
+
+# ── Migrate + seed image ─────────────────────────────────────────────────────
+# Ảnh riêng cho 2 one-shot job production: `migrate up` (áp schema) và `seed`
+# (tạo admin + sản phẩm mẫu, idempotent). Tách khỏi api/Dockerfile (chỉ build
+# cmd/server) để server runtime giữ nguyên distroless tối giản, không kèm binary
+# migrate/seed hay thư mục migrations.
+#
+# Cả 2 binary build tĩnh (CGO_ENABLED=0) → chạy trên distroless/static (không libc).
+# cmd/migrate đọc file migration bằng đường dẫn TƯƠNG ĐỐI "file://migrations" nên
+# WORKDIR runtime phải chứa thư mục migrations (copy vào /app/migrations).
+FROM golang:1.25-bookworm AS build
+WORKDIR /src
+
+ENV GOTOOLCHAIN=local \
+    CGO_ENABLED=0 \
+    GOOS=linux
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate && \
+    go build -trimpath -ldflags="-s -w" -o /out/seed ./cmd/seed
+
+# ── Runtime stage ────────────────────────────────────────────────────────────
+# distroless/static: không shell → mỗi one-shot service chạy 1 binary qua
+# `command:` dạng exec array (không cần sh -c). migrations copy vào /app.
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
+COPY --from=build /out/migrate /app/migrate
+COPY --from=build /out/seed /app/seed
+COPY migrations /app/migrations
+USER nonroot:nonroot
+# Không đặt ENTRYPOINT/CMD: compose chỉ định command riêng cho từng job
+# (["/app/migrate","up"] và ["/app/seed"]).

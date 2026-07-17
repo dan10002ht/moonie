@@ -20,6 +20,13 @@ RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund
 FROM node:20-alpine AS build
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+# NEXT_PUBLIC_API_BASE được Next INLINE lúc build (biến NEXT_PUBLIC_* nhúng vào cả
+# client bundle lẫn CSP trong next.config.ts — img-src/connect-src suy từ origin này).
+# Vì vậy KHÔNG thể set lúc runtime; phải truyền qua build ARG. Production truyền
+# origin công khai qua Caddy (https://<domain>/api/v1) để ảnh /uploads + CSP đúng.
+# Default giữ hành vi dev (localhost) khi build không truyền arg (vd docker-compose.yml).
+ARG NEXT_PUBLIC_API_BASE=http://localhost:8080/api/v1
+ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
