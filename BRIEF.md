@@ -138,7 +138,13 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-5-admin-ui.md`. Mỗi task UI
 4. [✅] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
    - Files: web/app/admin/(shell)/orders/page.tsx, components/admin/{orders-manager,order-form-dialog,order-detail}.tsx, lib/order-labels.ts. Commit 6bf9c20 → 2136049.
    - Gate: held-out 7/7 (tạo đơn nhiều dòng + snapshot + total, chi tiết, status, terminal guard, validate) + xác nhận độc lập API. design-evaluator 9/8/8/9 → fix overflow bảng chi tiết mobile. Qua thẳng không cần sửa code chính (generator rút kinh nghiệm).
-5. [⏳] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
+5. [✅] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
+   - Files: web/app/admin/(shell)/customers/page.tsx, components/admin/{customers-manager,customer-form-dialog}.tsx, lib/customer-labels.ts. Commit 4028a66.
+   - Gate: held-out 7/7 (CRUD + validate + phân trang) + xác nhận độc lập (auth, XSS-safe, contract). design-evaluator 9/8/8/9. Qua thẳng không cần sửa.
+
+### ✅ GIAI ĐOẠN 5 HOÀN THÀNH (5/5) — 2026-07-17
+Admin UI đầy đủ: đăng nhập → dashboard → quản lý sản phẩm(upload ảnh)/leads(convert)/đơn hàng(nhập tay nhiều dòng)/khách hàng. shadcn/ui theo tokens Mooni. Mọi task qua held-out (Playwright) + design-evaluator ≥8/10.
+Backlog UI: mobile-table card layout (recurring, không chặn — admin desktop-first).
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 

@@ -43,3 +43,5 @@
 - **Task 2** — Admin quản lý sản phẩm: bảng (gồm hidden) + dialog form tạo/sửa + upload ảnh (soft delete, preview). held-out 6/6 + design-evaluator 9/9/8/10. Commit `33fd088`, `32c5089`, `cc73efd`.
 - **Task 3** — Admin quản lý leads: bảng phân trang + đổi status + convert→đơn (SĐT/lời nhắn hiện đủ, làm rõ nhãn convert vs trạng thái). held-out 6/6 + design-evaluator 9/9/8/10. Commit `1a145c7`, `cb74f38`.
 - **Task 4** — Admin quản lý đơn hàng: bảng phân trang + form tạo đơn nhiều dòng món (tổng realtime) + chi tiết snapshot + đổi status (chặn terminal). held-out 7/7 + design-evaluator 9/8/8/9. Commit `6bf9c20`, `2136049`.
+- **Task 5** — Admin quản lý khách hàng: bảng phân trang + form tạo/sửa (SĐT tel:/email mailto: đủ liên hệ). held-out 7/7 + design-evaluator 9/8/8/9. Commit `4028a66`.
+- **🎉 Giai đoạn 5 (Admin UI) hoàn thành 5/5** — admin đầy đủ (login/dashboard/sản phẩm/leads/đơn/khách) theo tokens Mooni. Chỉ còn deploy (GĐ6).
