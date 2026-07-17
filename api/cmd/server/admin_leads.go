@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -77,6 +78,12 @@ func (s *Server) ListAdminLeads(w http.ResponseWriter, r *http.Request, params a
 	offset := 0
 	if params.Offset != nil && *params.Offset > 0 {
 		offset = *params.Offset
+	}
+	// offset PHẢI vừa int32 (kiểu tham số DB). >MaxInt32 sẽ tràn thành âm → Postgres
+	// lỗi → 500. Chặn sớm ở boundary bằng 400 (NFR-004/006).
+	if offset > math.MaxInt32 {
+		httpx.WriteError(w, http.StatusBadRequest, "offset quá lớn")
+		return
 	}
 
 	rows, err := s.leadAdmin.ListLeadsAdmin(r.Context(), store.ListLeadsAdminParams{
@@ -153,7 +160,9 @@ func (s *Server) ConvertLead(w http.ResponseWriter, r *http.Request, id openapi_
 		return
 	}
 
-	// Chặn convert 2 lần: lead đã 'converted' hoặc đã gắn order_id → 409.
+	// FAST-PATH (không phải guard thật): lead đã 'converted'/đã gắn order_id → 409 sớm,
+	// tránh mở transaction thừa. Guard THẬT chống race nằm trong ConvertLead (điều kiện
+	// WHERE order_id IS NULL + FOR UPDATE) → trả ErrLeadAlreadyConverted.
 	if lead.Status == "converted" || lead.OrderID.Valid {
 		httpx.WriteError(w, http.StatusConflict, "lead này đã được convert thành đơn trước đó")
 		return
@@ -174,6 +183,15 @@ func (s *Server) ConvertLead(w http.ResponseWriter, r *http.Request, id openapi_
 		})
 		if err == nil {
 			break
+		}
+		// Guard thật trong tx thắng cuộc đua: request thua trả 409 (không đơn mồ côi).
+		if errors.Is(err, store.ErrLeadAlreadyConverted) {
+			httpx.WriteError(w, http.StatusConflict, "lead này đã được convert thành đơn trước đó")
+			return
+		}
+		if errors.Is(err, store.ErrLeadNotFound) {
+			httpx.WriteError(w, http.StatusNotFound, "không tìm thấy lead")
+			return
 		}
 		if isUniqueViolation(err) && attempt < convertMaxRetries {
 			continue

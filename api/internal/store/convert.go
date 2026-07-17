@@ -7,11 +7,20 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// ErrLeadAlreadyConverted báo lead đã được convert trước đó (order_id đã set). Handler
+// map lỗi này → 409. Là guard THẬT chống race: xác định trong transaction bằng
+// điều kiện WHERE order_id IS NULL, không phải check-then-act ngoài tx.
+var ErrLeadAlreadyConverted = errors.New("lead đã được convert")
+
+// ErrLeadNotFound báo lead không tồn tại (khóa dòng đầu tx không thấy). Handler → 404.
+var ErrLeadNotFound = errors.New("lead không tồn tại")
 
 // Beginner trừu tượng hóa pool.Begin để mở transaction. *pgxpool.Pool thỏa mãn.
 type Beginner interface {
@@ -40,6 +49,16 @@ func ConvertLead(ctx context.Context, db Beginner, arg ConvertLeadParams) (Order
 
 	q := New(tx)
 
+	// Khóa dòng lead (FOR UPDATE) đầu tx: 2 request convert song song cùng lead phải
+	// xếp hàng. Request thứ 2 block tới khi request 1 commit rồi mới đọc được order_id
+	// đã set → SetLeadOrder guard loại nó (0 dòng) → rollback → chỉ 1 đơn tồn tại.
+	if _, err := q.LockLead(ctx, arg.LeadID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Order{}, ErrLeadNotFound
+		}
+		return Order{}, fmt.Errorf("convert lead: lock lead: %w", err)
+	}
+
 	note := arg.Note
 	order, err := q.CreateOrder(ctx, CreateOrderParams{
 		Code:     arg.Code,
@@ -54,8 +73,15 @@ func ConvertLead(ctx context.Context, db Beginner, arg ConvertLeadParams) (Order
 		return Order{}, fmt.Errorf("convert lead: create order: %w", err)
 	}
 
-	if err := q.SetLeadOrder(ctx, SetLeadOrderParams{ID: arg.LeadID, OrderID: order.ID}); err != nil {
+	// Guard THẬT (atomic): chỉ set khi order_id IS NULL. 0 dòng ⇒ lead đã convert →
+	// rollback tx (order vừa tạo cũng bị hủy → KHÔNG còn đơn mồ côi) → sentinel error.
+	affected, err := q.SetLeadOrder(ctx, SetLeadOrderParams{ID: arg.LeadID, OrderID: order.ID})
+	if err != nil {
 		return Order{}, fmt.Errorf("convert lead: set lead order: %w", err)
+	}
+	if affected == 0 {
+		// Rollback qua defer (không commit) → order vừa tạo bị hủy.
+		return Order{}, ErrLeadAlreadyConverted
 	}
 
 	if err := tx.Commit(ctx); err != nil {

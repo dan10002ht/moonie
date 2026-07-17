@@ -169,11 +169,23 @@ SET status = $2
 WHERE id = $1
 RETURNING id, name, phone, message, product_interest, source, status, created_at, order_id;
 
--- name: SetLeadOrder :exec
--- Convert lead → đơn: gắn order_id và đánh dấu đã chuyển đổi (REQ-LEAD-005).
+-- name: LockLead :one
+-- Khóa dòng lead (FOR UPDATE) ở đầu transaction convert để request convert song
+-- song cùng lead phải xếp hàng: request thứ 2 block tới khi request 1 commit rồi
+-- mới đọc được order_id đã set → guard WHERE order_id IS NULL loại nó (REQ-LEAD-005).
+SELECT id, name, phone, message, product_interest, source, status, created_at, order_id
+FROM leads
+WHERE id = $1
+FOR UPDATE;
+
+-- name: SetLeadOrder :execrows
+-- Convert lead → đơn: gắn order_id + đánh dấu 'converted' CHỈ khi lead chưa convert
+-- (order_id IS NULL). Guard nằm trong điều kiện WHERE (atomic trong tx) — chống race
+-- convert-2-lần tạo đơn mồ côi. Trả số dòng ảnh hưởng: 0 = đã convert trước đó
+-- (REQ-LEAD-005).
 UPDATE leads
 SET status = 'converted', order_id = $2
-WHERE id = $1;
+WHERE id = $1 AND order_id IS NULL;
 
 -- =====================================================================
 -- Dashboard (REQ-DASH-001)

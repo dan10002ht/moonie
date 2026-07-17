@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -135,6 +136,24 @@ func TestListAdminLeadsPaginationClamp(t *testing.T) {
 				t.Errorf("params = %+v, want limit=%d offset=%d", f.listParams, tc.wantLimit, tc.wantOffset)
 			}
 		})
+	}
+}
+
+// TestListAdminLeadsOffsetOverflow: offset > MaxInt32 → 400 (không để tràn int32 →
+// Postgres lỗi → 500), KHÔNG gọi store.
+func TestListAdminLeadsOffsetOverflow(t *testing.T) {
+	f := &fakeLeadAdmin{}
+	srv := &Server{leadAdmin: f}
+	rec := httptest.NewRecorder()
+	over := math.MaxInt32 + 1
+	srv.ListAdminLeads(rec, httptest.NewRequest(http.MethodGet, "/x", nil),
+		api.ListAdminLeadsParams{Offset: &over})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code = %d, want 400", rec.Code)
+	}
+	// store không được gọi (listParams giữ zero-value).
+	if f.listParams.Limit != 0 {
+		t.Errorf("store không được gọi khi offset tràn, đã gọi với %+v", f.listParams)
 	}
 }
 

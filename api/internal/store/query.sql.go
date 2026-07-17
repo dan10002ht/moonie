@@ -745,10 +745,37 @@ func (q *Queries) ListVisibleProducts(ctx context.Context) ([]Product, error) {
 	return items, nil
 }
 
-const setLeadOrder = `-- name: SetLeadOrder :exec
+const lockLead = `-- name: LockLead :one
+SELECT id, name, phone, message, product_interest, source, status, created_at, order_id
+FROM leads
+WHERE id = $1
+FOR UPDATE
+`
+
+// Khóa dòng lead (FOR UPDATE) ở đầu transaction convert để request convert song
+// song cùng lead phải xếp hàng: request thứ 2 block tới khi request 1 commit rồi
+// mới đọc được order_id đã set → guard WHERE order_id IS NULL loại nó (REQ-LEAD-005).
+func (q *Queries) LockLead(ctx context.Context, id pgtype.UUID) (Lead, error) {
+	row := q.db.QueryRow(ctx, lockLead, id)
+	var i Lead
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Message,
+		&i.ProductInterest,
+		&i.Source,
+		&i.Status,
+		&i.CreatedAt,
+		&i.OrderID,
+	)
+	return i, err
+}
+
+const setLeadOrder = `-- name: SetLeadOrder :execrows
 UPDATE leads
 SET status = 'converted', order_id = $2
-WHERE id = $1
+WHERE id = $1 AND order_id IS NULL
 `
 
 type SetLeadOrderParams struct {
@@ -756,10 +783,16 @@ type SetLeadOrderParams struct {
 	OrderID pgtype.UUID `json:"order_id"`
 }
 
-// Convert lead → đơn: gắn order_id và đánh dấu đã chuyển đổi (REQ-LEAD-005).
-func (q *Queries) SetLeadOrder(ctx context.Context, arg SetLeadOrderParams) error {
-	_, err := q.db.Exec(ctx, setLeadOrder, arg.ID, arg.OrderID)
-	return err
+// Convert lead → đơn: gắn order_id + đánh dấu 'converted' CHỈ khi lead chưa convert
+// (order_id IS NULL). Guard nằm trong điều kiện WHERE (atomic trong tx) — chống race
+// convert-2-lần tạo đơn mồ côi. Trả số dòng ảnh hưởng: 0 = đã convert trước đó
+// (REQ-LEAD-005).
+func (q *Queries) SetLeadOrder(ctx context.Context, arg SetLeadOrderParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setLeadOrder, arg.ID, arg.OrderID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const sumRevenueThisMonth = `-- name: SumRevenueThisMonth :one
