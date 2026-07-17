@@ -65,6 +65,15 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-2-api-public.md`. Feature tas
 ### ✅ GIAI ĐOẠN 2 HOÀN THÀNH (4/4) — 2026-07-17
 API public đầy đủ: GET /products, POST /leads (validate + rate limit), Telegram notify fail-safe, web client. Mọi feature qua held-out gate + go-reviewer. Landing GĐ3 có đủ API để gọi.
 
+## Giai đoạn 3 — Landing page (từ mockup)
+
+Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI: screenshot loop (2 viewport so mockup) + design-evaluator ≥8/10. Task 4 thêm qa-evaluator (held-out interaction).
+
+1. [ ] Task 1 — seed products khớp mockup + cài Playwright (nền REQ-LAND-002)
+2. [ ] Task 2 — landing frame: header/hero/trust/footer/sticky CTA (REQ-LAND-001/004)
+3. [ ] Task 3 — product & content sections, wire GET /products (REQ-LAND-001/002)
+4. [ ] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
+
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
 1. [ ] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
