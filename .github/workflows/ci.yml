@@ -14,7 +14,8 @@ jobs:
     # tự spin Postgres:16 cho integration test (KHÔNG cần service container).
     env:
       CGO_ENABLED: "0"
-      GOTOOLCHAIN: local
+      # KHÔNG set GOTOOLCHAIN=local ở CI: runner ephemeral, để auto tải toolchain
+      # go.mod/tool yêu cầu (golangci-lint build cần Go mới hơn). Local thì dùng make (đã pin).
     defaults:
       run:
         working-directory: api
@@ -35,7 +36,7 @@ jobs:
       # action v6 dành cho golangci-lint v1, xử lý sai config schema v2 dù pin version v2).
       # Chạy y hệt `make lint` local (CGO_ENABLED=0 đã ở env job) để CI khớp local 1:1.
       - name: Install golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - name: golangci-lint
         run: $(go env GOPATH)/bin/golangci-lint run
 
