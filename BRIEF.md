@@ -26,8 +26,10 @@ Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (m�
    - Next 16.2.10 + Tailwind v4 (@theme trong globals.css), React 19.2.4. Files: web/ (layout font Playfair+Be Vietnam, page placeholder tokens, lib/api.ts apiFetch generic, proxy.ts skeleton /admin). Commit dc40754.
    - Gate PASS (verify độc lập): tsc sạch, lint sạch, build Turbopack xanh, tokens render thật (bg-navy/gold/font-serif), tiếng Việt OK. Placeholder — design-evaluator vs mockup để dành landing thật (giai đoạn 3).
    - Node 20.19 thỏa (Next 16 cần ≥20.9). web/CLAUDE.md+AGENTS.md do scaffold tạo, giữ (note Next 16, không xung đột).
-6. [⏳] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
-7. [ ] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
+6. [✅] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
+   - Files: web/types/api.d.ts (sinh, committed), lib/api.ts getHealth dùng components["schemas"]["Health"], script gen:api (openapi-typescript 7.13.0). Commit 1ecc8f3.
+   - Gate PASS (verify độc lập): tsc sạch, không any, regenerate không drift (types khớp spec), gate chứng minh (getHealth sai type→tsc FAIL TS2322→khôi phục). Vòng contract web↔api khép kín.
+7. [⏳] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
 8. [ ] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
