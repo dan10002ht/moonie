@@ -4,7 +4,7 @@ up:
 	docker compose up -d postgres
 
 gen:
-	# điền ở task sau
+	cd api && GOTOOLCHAIN=local go generate ./...
 
 migrate:
 	# điền ở task sau

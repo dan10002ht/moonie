@@ -14,10 +14,26 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/moonie/api/internal/api"
 	"github.com/moonie/api/internal/config"
 	"github.com/moonie/api/internal/db"
 	"github.com/moonie/api/internal/httpx"
 )
+
+// Server implement api.ServerInterface (sinh từ openapi.yaml). Dòng assertion
+// dưới đây cưỡng chế mọi handler khớp hợp đồng lúc compile — lệch spec = fail build.
+var _ api.ServerInterface = (*Server)(nil)
+
+// Server gom các phụ thuộc handler cần (pool DB…) và implement ServerInterface.
+// pool có thể nil trong test không cần DB (healthz không chạm DB).
+type Server struct {
+	pool *pgxpool.Pool
+}
+
+// GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
+func (*Server) GetHealthz(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, api.Health{Status: "ok"})
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -77,7 +93,7 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(_ *pgxpool.Pool) http.Handler {
+func newRouter(pool *pgxpool.Pool) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -91,9 +107,11 @@ func newRouter(_ *pgxpool.Pool) http.Handler {
 		httpx.WriteError(w, http.StatusMethodNotAllowed, "phương thức không được hỗ trợ")
 	})
 
-	r.Get("/api/v1/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
+	// Mọi route đi qua handler sinh từ spec (HandlerFromMuxWithBaseURL) để lệch
+	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
+	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
+	srv := &Server{pool: pool}
+	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r
 }

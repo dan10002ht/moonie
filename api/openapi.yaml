@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: Mooni Cake API
+  description: >-
+    Hợp đồng API chính thức của Mooni Cake (spec-first). Mọi endpoint nghiệp vụ
+    thêm ở giai đoạn sau đều phải khai báo tại đây trước khi implement.
+  version: 0.1.0
+servers:
+  - url: /api/v1
+    description: Base path của toàn bộ API (REQ, SRS Quyết định §5)
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Health check
+      description: Trả về trạng thái sống của service. Không chạm DB.
+      responses:
+        "200":
+          description: Service khỏe mạnh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
