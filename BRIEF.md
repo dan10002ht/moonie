@@ -80,10 +80,18 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI:
    - Files: web/components/landing/{Collection,Flavors,product-card,CorporateGifting,Craft,Testimonials}.tsx, lib/format.ts. + migration 0005 (compare_at_price + subtitle), openapi/seed/handler cho 2 field mới. Commit 1c5a81b → 8297aaf.
    - Product model bổ sung theo quyết định chủ dự án: badge (Bán chạy/Mới/Quà biếu), compare_at_price (giá KM gạch + %), subtitle (nhãn loại). Seed khớp mockup.
    - Gate: design-evaluator PASS 9/9/9/9 (NFR-010). Held-out products vẫn PASS sau thêm field.
-4. [⏳] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
+4. [✅] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
+   - Files: web/components/landing/ContactSheet.tsx (client, form + kênh Zalo/Messenger/Gọi), web/app/actions/lead.ts (Server Action submitLead → createLead, tránh CORS). Commit c99b4ea.
+   - Quyết định chủ dự án: sheet CHỨA form → POST /leads + kênh nhanh bên dưới (mọi CTA bắt lead). Submit qua Next Server Action (server-to-server).
+   - Gate: qa-evaluator held-out 9/9 (mở/đóng X/Escape/backdrop, 4 field, submit 201+lead DB new, SĐT sai→lỗi giữ data, 429). design-evaluator 9/9/9/9 (NFR-010). Generator không đụng held-out.
+   - Minor (backlog): vài hex one-off trong ContactSheet nên tokenize.
+
+### ✅ GIAI ĐOẠN 3 HOÀN THÀNH (4/4) — 2026-07-17
+Landing hoàn chỉnh khớp mockup: header/hero/trust/collection(3 hộp)/corporate/craft/flavors(4 bánh)/testimonials/footer + bottom sheet form đặt hàng → POST /leads → admin + Telegram. Website có trang chủ chạy được, khách đặt hàng được. design-evaluator ≥8/10 mọi task UI.
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
+0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch. (Cân nhắc: hoặc browser gọi /api same-origin qua Caddy thay vì Server Action.)
 1. [ ] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
 
 ## Backlog ý tưởng (chưa thành task)

@@ -25,3 +25,5 @@
 - **Task 1** — Seed 7 sản phẩm mẫu khớp mockup (3 hộp quà + 4 bánh lẻ) + field `badge` (migration 0004) cho nhãn "Bán chạy"/"Mới" + cài Playwright. Commit `bd6b935`, `bc41529`.
 - **Task 2** — Landing frame (announcement bar, header + menu mobile, hero navy serif, trust strip, footer, sticky CTA mobile) port 1:1 từ mockup. design-evaluator PASS 9/9/8/9. Commit `bfbbc00`.
 - **Task 3** — Landing product & content sections (bộ sưu tập 3 hộp + 4 bánh lẻ từ GET /products, quà DN, câu chuyện, testimonials). Thêm product model: `badge`, `compare_at_price` (giá KM), `subtitle` (nhãn loại) — migration 0005. design-evaluator PASS 9/9/9/9. Commit `1c5a81b`, `8297aaf`.
+- **Task 4** — Contact bottom sheet + form đặt hàng → POST /leads (qua Next Server Action) + kênh nhanh Zalo/Messenger/Gọi. Mở/đóng X/backdrop/Escape, xử lý 400/429. qa-evaluator held-out 9/9 + design-evaluator 9/9/9/9. Commit `c99b4ea`.
+- **🎉 Giai đoạn 3 (Landing) hoàn thành 4/4** — website có trang chủ hoàn chỉnh khớp mockup, khách đặt hàng qua form → admin + Telegram.
