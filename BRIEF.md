@@ -121,6 +121,16 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
 Backend admin đầy đủ: đăng nhập JWT + quản lý sản phẩm(upload ảnh)/leads(convert)/đơn hàng(transaction+snapshot)/khách hàng/dashboard doanh thu. Mọi task qua held-out + go-reviewer; security-review tổng không HIGH/CRITICAL. Verify độc lập cứu nhiều lỗi thật: race convert, data-corruption tiền, doanh thu lệch múi giờ, footgun JWT secret, brute-force login.
    - security-review scope thêm (từ go-reviewer Task 2): (a) CSRF cho admin mutations POST/PUT/DELETE (SameSite=Lax hiện đủ cho form cross-site nhưng cân nhắc double-submit/Origin check khi có mutation); (b) quy ước "mọi route cần auth phải dưới /api/v1/admin/*" — kiểm không route mutation nào đặt ngoài prefix mà quên bảo vệ.
 
+## Giai đoạn 5 — Admin UI
+
+Plan: `docs/superpowers/plans/2026-07-17-giai-doan-5-admin-ui.md`. Mỗi task UI: screenshot loop + design-evaluator (nhất quán tokens Mooni + usability, không pixel-match). Task form thêm qa-evaluator held-out.
+
+1. [ ] Task 1 — shadcn setup + admin shell + login + dashboard (REQ-ADM-001, REQ-AUTH-004, REQ-DASH-001 UI)
+2. [ ] Task 2 — Quản lý sản phẩm: table + form + upload ảnh (REQ-PROD-002/003 UI)
+3. [ ] Task 3 — Quản lý leads: table phân trang + status + convert (REQ-LEAD-004/005 UI)
+4. [ ] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
+5. [ ] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
+
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
 0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch.
