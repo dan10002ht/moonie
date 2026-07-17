@@ -14,8 +14,11 @@ Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (m�
 2. [✅] Task 2 — Go API skeleton: config, chi router, /healthz, error helper (NFR-006, NFR-005)
    - Files: api/ (go.mod pin pgx v5.7.5/Go 1.23, httpx errors, config, db pool, cmd/server + newRouter, main_test, .golangci.yml). Commit e9b516c → fix 8696c89.
    - go-reviewer FAIL vòng 1 (5 finding: RealIP IP-spoofing lint-block, thiếu timeout pool, thiếu graceful shutdown, 404/405 không JSON, thiếu test router) → generator sửa hết → re-verify độc lập PASS: golangci-lint exit 0, 15 test pass, healthz/404 JSON đúng, shutdown graceful exit 0.
-3. [⏳] Task 3 — OpenAPI spec-first + oapi-codegen contract gate phía Go (SRS §5, NFR-006)
-4. [ ] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
+3. [✅] Task 3 — OpenAPI spec-first + oapi-codegen contract gate phía Go (SRS §5, NFR-006)
+   - Files: api/openapi.yaml, tools.go, internal/api/gen.go + zz_generated.go (oapi-codegen v2.4.1), main.go wire HandlerFromMuxWithBaseURL + assertion `var _ api.ServerInterface`, Makefile gen. Commit c659470.
+   - Gate PASS (verify độc lập): build/15 test/lint xanh; assertion tồn tại main.go:25; /api/v1/healthz→200 qua handler sinh từ spec; gate đã chứng minh (đổi method→build FAIL→khôi phục).
+   - PATTERN cho task sau: method name KHÔNG kèm /api/v1 (path /healthz → GetHealthz); prefix /api/v1 gắn lúc mount qua baseURL. Đặt operationId rõ ràng để kiểm soát tên method.
+4. [⏳] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
 5. [ ] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
 6. [ ] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
 7. [ ] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
