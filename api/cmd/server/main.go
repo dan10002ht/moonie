@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -101,7 +102,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction(), cfg.UploadsDir, clientIP),
+		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction(), cfg.UploadsDir, clientIP, cfg.AllowedOrigins),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -132,11 +133,20 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool, uploadsDir string, clientIP *httpx.ClientIPResolver) http.Handler {
+func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool, uploadsDir string, clientIP *httpx.ClientIPResolver, allowedOrigins []string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	// Header bảo mật TOÀN CỤC cho MỌI response (JSON success/error, 404, /uploads):
+	// đặt SỚM trong chuỗi middleware để phủ cả handler NotFound/MethodNotAllowed và
+	// mọi lỗi bind param. Chống MIME-sniff, clickjacking, rò rỉ Referer (L6).
+	r.Use(securityHeaders)
+
+	// CSRF defense-in-depth (L4): kiểm Origin cho request GHI tới route admin/auth.
+	// Đặt trước auth để chặn cross-site sớm; SameSite=Lax cookie vẫn là lớp 1.
+	r.Use(originCheck(allowedOrigins))
 
 	// Lỗi mặc định của chi là text/plain; ép về JSON {error} chuẩn (NFR-006).
 	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
@@ -220,14 +230,114 @@ func (n noDirFS) Open(name string) (http.File, error) {
 	return f, nil
 }
 
-// nosniffUploads gắn header X-Content-Type-Options: nosniff cho mọi phản hồi
-// /uploads/* trước khi FileServer chạy — chặn trình duyệt MIME-sniff nội dung
-// upload thành HTML/JS (defense-in-depth chống stored-XSS khi landing hiển thị ảnh).
+// nosniffUploads gắn header cho mọi phản hồi /uploads/* trước khi FileServer chạy.
+// X-Content-Type-Options: nosniff chặn trình duyệt MIME-sniff nội dung upload thành
+// HTML/JS (defense-in-depth chống stored-XSS khi landing hiển thị ảnh). Global
+// securityHeaders cũng đã đặt nosniff; giữ ở đây để wrapper /uploads tự đủ ngay cả
+// khi refactor chuỗi middleware. Thêm Cross-Origin-Resource-Policy: same-site để
+// ảnh chỉ nhúng được từ cùng site (chống hotlink/leak cross-origin).
 func nosniffUploads(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-site")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// securityHeaders là middleware TOÀN CỤC đặt header bảo mật cho MỌI response (L6):
+//   - X-Content-Type-Options: nosniff — chặn MIME-sniffing.
+//   - X-Frame-Options: DENY — chống clickjacking (không cho nhúng vào iframe).
+//   - Referrer-Policy: no-referrer — không rò rỉ URL admin qua Referer khi điều hướng.
+//
+// Đặt header TRƯỚC khi gọi next để phủ cả body do handler/NotFound ghi ra.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// originCheck là middleware CSRF defense-in-depth (L4): với request GHI (POST/PUT/
+// PATCH/DELETE) tới route admin (prefix /api/v1/admin) hoặc /auth/login|/auth/logout,
+// kiểm header Origin. Lớp này BẬT KHÔNG phụ thuộc cấu hình.
+//
+// Quy tắc khi path nhạy cảm + method GHI:
+//   - Origin VẮNG mặt → cho qua (client server-to-server không gửi Origin; cookie
+//     SameSite=Lax đã là lớp 1).
+//   - Origin CÓ mặt + allowedOrigins cấu hình (không rỗng) → khớp allowlist thì qua,
+//     ngược lại 403.
+//   - Origin CÓ mặt + allowedOrigins RỖNG (dev/không cấu hình) → fallback same-origin:
+//     host của Origin phải khớp Host header của request. Khác → 403; Origin parse
+//     lỗi → 403 (an toàn). Không phá dev (same-origin luôn qua) nhưng chặn cross-site.
+//
+// Mục tiêu cốt lõi: request có Origin lạ (vd https://evil.example) PHẢI bị 403.
+func originCheck(allowedOrigins []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isWriteMethod(r.Method) && requiresOriginCheck(r.URL.Path) {
+				if origin := r.Header.Get("Origin"); origin != "" && !originAllowed(origin, allowedOrigins, r.Host) {
+					httpx.WriteError(w, http.StatusForbidden, "nguồn gốc yêu cầu không hợp lệ")
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// isWriteMethod cho biết method có thay đổi trạng thái (cần chống CSRF) hay không.
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+// requiresOriginCheck cho biết path có phải route nhạy cảm (admin/auth) cần kiểm
+// Origin hay không: nhóm /api/v1/admin (chính nó hoặc con /api/v1/admin/…), hoặc
+// chính /auth/login, /auth/logout. So theo SEGMENT (prefix + "/") để "/api/v1/adminx"
+// KHÔNG bị coi nhầm là route admin.
+func requiresOriginCheck(path string) bool {
+	if path == "/api/v1/auth/login" || path == "/api/v1/auth/logout" {
+		return true
+	}
+	return path == adminPathPrefix || strings.HasPrefix(path, adminPathPrefix+"/")
+}
+
+// originAllowed quyết định một Origin (đã biết là CÓ mặt) có được chấp nhận không.
+//
+//   - allowed không rỗng → khớp CHÍNH XÁC một phần tử allowlist (phân biệt
+//     scheme+host+port). So nguyên chuỗi vì trình duyệt gửi Origin dạng chuẩn hoá
+//     "scheme://host[:port]" không kèm path/slash cuối.
+//   - allowed RỖNG (dev/không cấu hình) → fallback same-origin: host[:port] parse từ
+//     Origin phải khớp Host header của request. Origin parse lỗi → false (403 an toàn).
+func originAllowed(origin string, allowed []string, host string) bool {
+	if len(allowed) > 0 {
+		for _, a := range allowed {
+			if origin == a {
+				return true
+			}
+		}
+		return false
+	}
+	return sameOrigin(origin, host)
+}
+
+// sameOrigin so host[:port] của Origin với Host header của request. Trả false nếu
+// Origin không parse được (không có host) — mặc định an toàn (chặn). Cổng được so
+// nguyên trong Host: browser gửi Origin "scheme://host[:port]" còn r.Host là
+// "host[:port]"; ta so phần u.Host (đã gồm cổng) với host.
+func sameOrigin(origin, host string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	return u.Host == host
 }
 
 // adminPathPrefix là tiền tố URL của mọi route admin cần auth (REQ-AUTH-002).

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -34,7 +35,35 @@ const (
 	seedAdminName = "Mooni Admin"
 	// defaultAdminPassword dùng khi không set env SEED_ADMIN_PASSWORD.
 	defaultAdminPassword = "mooni-admin"
+	// minProdPasswordLen là độ dài tối thiểu của SEED_ADMIN_PASSWORD khi seed
+	// production — chặn mật khẩu quá yếu cho tài khoản admin trên môi trường thật.
+	minProdPasswordLen = 12
 )
+
+// resolveSeedPassword tính password admin hiệu dụng và CHẶN mật khẩu không an toàn
+// khi seed production (APP_ENV == "production"):
+//   - password hiệu dụng == default ("mooni-admin") → từ chối (buộc đặt SEED_ADMIN_PASSWORD mạnh).
+//   - password ngắn hơn minProdPasswordLen → từ chối.
+//
+// APP_ENV khác production → giữ nguyên hành vi cũ (cho phép default cho dev/test).
+// Trả error mô tả rõ (KHÔNG in password) để caller exit non-zero TRƯỚC khi chạm DB.
+func resolveSeedPassword(appEnv, envPassword string) (string, error) {
+	password := defaultAdminPassword
+	if envPassword != "" {
+		password = envPassword
+	}
+	// So khớp production KHÔNG phân biệt hoa/thường + trim: "Production"/" PRODUCTION "
+	// vẫn kích guard, tránh footgun lệch case khiến mật khẩu mặc định lọt lên prod.
+	if strings.EqualFold(strings.TrimSpace(appEnv), "production") {
+		switch {
+		case password == defaultAdminPassword:
+			return "", fmt.Errorf("từ chối seed: đặt SEED_ADMIN_PASSWORD mạnh (≥%d ký tự) trước khi seed production — không dùng mật khẩu mặc định", minProdPasswordLen)
+		case len(password) < minProdPasswordLen:
+			return "", fmt.Errorf("từ chối seed: SEED_ADMIN_PASSWORD phải ≥%d ký tự khi seed production", minProdPasswordLen)
+		}
+	}
+	return password, nil
+}
 
 // seedProduct là 1 sản phẩm mẫu. price là VND (bigint) — chỉ lưu nội bộ, landing
 // không hiển thị. imageURL để rỗng (mockup dùng placeholder, ảnh thật thêm sau qua admin).
@@ -150,9 +179,11 @@ func run() error {
 		return err
 	}
 
-	password := defaultAdminPassword
-	if env := os.Getenv("SEED_ADMIN_PASSWORD"); env != "" {
-		password = env
+	// Chặn mật khẩu mặc định/yếu khi seed production TRƯỚC khi kết nối DB — không
+	// tạo/ghi admin nếu bị từ chối.
+	password, err := resolveSeedPassword(cfg.AppEnv, os.Getenv("SEED_ADMIN_PASSWORD"))
+	if err != nil {
+		return err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)

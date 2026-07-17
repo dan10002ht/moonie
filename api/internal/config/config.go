@@ -27,12 +27,21 @@ type Config struct {
 	// limit (NFR-006, M1). Rỗng = không tin proxy nào → rate limit theo RemoteAddr
 	// (default an toàn cho dev, chống spoof header).
 	TrustedProxies []string
+	// AllowedOrigins là danh sách origin (scheme://host[:port]) được phép gửi
+	// request GHI tới route admin/auth, tách từ ALLOWED_ORIGIN (phân tách dấu phẩy).
+	// Dùng cho CSRF defense-in-depth (L4): nếu header Origin CÓ mặt mà không khớp
+	// danh sách này → 403. Rỗng = fallback same-origin theo Host header (vẫn chặn
+	// cross-site); set giá trị để dùng allowlist tường minh ở production, ví dụ
+	// ALLOWED_ORIGIN=https://mooni.vn.
+	AllowedOrigins []string
 }
 
-// IsProduction cho biết có đang chạy ở môi trường production hay không (AppEnv
-// == "production"). Dùng để bật cờ Secure trên cookie auth.
+// IsProduction cho biết có đang chạy ở môi trường production hay không. So khớp
+// KHÔNG phân biệt hoa/thường + trim khoảng trắng ("Production", " PRODUCTION " …
+// đều tính là production) để tránh footgun: lệch case sẽ vô tình TẮT cờ Secure
+// cookie. Dùng để bật cờ Secure trên cookie auth.
 func (c *Config) IsProduction() bool {
-	return c.AppEnv == "production"
+	return strings.EqualFold(strings.TrimSpace(c.AppEnv), "production")
 }
 
 // defaultTelegramAPIBase là host Telegram Bot API mặc định. Override qua
@@ -98,6 +107,7 @@ func Load() (*Config, error) {
 		AppEnv:           os.Getenv("APP_ENV"),
 		UploadsDir:       uploadsDir,
 		TrustedProxies:   parseCSVList(os.Getenv("TRUSTED_PROXIES")),
+		AllowedOrigins:   parseCSVList(os.Getenv("ALLOWED_ORIGIN")),
 	}, nil
 }
 

@@ -136,7 +136,7 @@ func TestGetAdminDashboardQueryError(t *testing.T) {
 // auth gác /admin/*). Đi qua router thật để bao gồm cả tầng middleware (REQ-DASH-001,
 // REQ-AUTH-002).
 func TestGetAdminDashboardRequiresAuth(t *testing.T) {
-	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir(), testClientIP())
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir(), testClientIP(), nil)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/dashboard", nil)
 	handler.ServeHTTP(rec, req)

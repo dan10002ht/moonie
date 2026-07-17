@@ -153,11 +153,14 @@ Backlog UI: mobile-table card layout (recurring, không chặn — admin desktop
    - Gate: HELD-OUT 13/13 PASS (`tests/heldout/giai-doan-6-task-0-real-ip_test.sh` — 3 config cô lập: rightmost-non-trusted, spoof-guard, default an toàn, cả /leads + /auth/login). go-reviewer VERDICT PASS (make lint 0 issues, make test all pass, phân tích spoof/CIDR/IPv6/panic sạch).
    - ⚠️ FOOTGUN VẬN HÀNH: production BẮT BUỘC set `TRUSTED_PROXIES` = dải Caddy/Next thật; để trống ở prod → toàn site rate-limit theo IP proxy. Ghi vào runbook (Task 1).
    - Backlog robustness (go-reviewer minor, không chặn): entry XFF có port → thử ParseAddrPort; entry rác → `continue` thay vì fallback; thêm ca test IPv6/IPv4-mapped lấy từ XFF.
-0b. [ ] **Security deploy-gate GĐ6** (từ security-review tổng GĐ4 — MEDIUM/LOW, không chặn đóng GĐ4):
-   - BẮT BUỘC trước production: đổi mật khẩu admin mặc định (đặt SEED_ADMIN_PASSWORD, không dùng 'mooni-admin') — nếu bỏ qua, brute-force login thành CRITICAL.
-   - APP_ENV=production để cookie Secure=true; reverse proxy ép HTTPS + HSTS (M2).
-   - Header bảo mật toàn cục API (CSP/X-Frame-Options/Referrer-Policy — L6); nosniff mới chỉ ở /uploads.
-   - (defense-in-depth) Origin/Referer check hoặc double-submit CSRF cho mutation admin, hoặc SameSite=Strict cookie admin (L4). JWT TTL ngắn hơn / token version thu hồi (L3).
+0b. [✅] **Security deploy-gate GĐ6** (từ security-review tổng GĐ4 — MEDIUM/LOW, không chặn đóng GĐ4):
+   - ✅ Seed guard: `resolveSeedPassword` (api/cmd/seed) — APP_ENV=production (case-fold) + password == default 'mooni-admin' HOẶC <12 ký tự → từ chối seed (exit≠0, không ghi DB). Dev giữ default.
+   - ✅ Cookie Secure: `IsProduction()` case-fold+trim (không còn footgun `APP_ENV="Production"` tắt Secure âm thầm).
+   - ✅ Header bảo mật toàn cục API (`securityHeaders` middleware): nosniff + X-Frame-Options DENY + Referrer-Policy no-referrer cho MỌI response (200/404/405/error/uploads); /uploads thêm Cross-Origin-Resource-Policy same-site. Web (`next.config.ts`): CSP + frame-ancestors none + nosniff + Referrer-Policy (prod không unsafe-eval/ws).
+   - ✅ CSRF defense-in-depth (`originCheck`): write method trên `/api/v1/admin/*` + `/auth/login` + `/auth/logout` — Origin lạ → 403. ALLOWED_ORIGIN set → allowlist; rỗng → fallback same-origin theo Host. Segment-aware prefix (fix bug `/adminx` khớp nhầm). Origin vắng → qua (server-to-server; SameSite là lớp 1).
+   - Files: api/cmd/server/main.go, api/internal/config/config.go, api/cmd/seed/main.go, api/cmd/server/security_test.go, api/cmd/seed/main_test.go, web/next.config.ts, .env.example (ALLOWED_ORIGIN).
+   - Gate: HELD-OUT 12/12 (`tests/heldout/giai-doan-6-task-0b-security_test.sh` — A header toàn cục, B CSRF Origin→403, C seed prod-guard). go-reviewer VERDICT PASS (make lint 0, make test all, không bypass Origin/seed). 3 minor go-reviewer đã sửa.
+   - Còn lại cho Task 1/deploy: reverse proxy ép HTTPS + HSTS (Caddy). JWT TTL ngắn/token version (L3) → backlog (không chặn launch).
 1. [ ] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
 
 ## Backlog ý tưởng (chưa thành task)
