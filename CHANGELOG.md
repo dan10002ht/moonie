@@ -12,3 +12,6 @@
 - **Task 7** — CI GitHub Actions (`.github/workflows/ci.yml`, 2 job lint+test+build) + Dockerfile api (distroless 17.7MB) & web (standalone 388MB) + full `docker compose` cả stack. Fix package-lock portability (darwin→linux) và testcontainers trên Colima (socket override). Commit `7bda1f8`, `97589ae`.
 - **Task 8** — Project skill `run-moonie` (boot runbook cho mọi agent) + `api/cmd/seed` (admin mẫu idempotent, bcrypt). Commit `b2a5914`.
 - **🎉 Giai đoạn 1 (Scaffold) hoàn thành 8/8** — monorepo Next.js 16 + Go + Postgres chạy được đầu-cuối, contract OpenAPI 2 phía, CI + Docker sẵn sàng.
+
+### Giai đoạn 2 — API Public
+- **Task 1** — `GET /api/v1/products` public (bảng products, chỉ trả status != hidden, ORDER BY tất định). Held-out acceptance test 12/12 + go-reviewer PASS. Commit `3aedd62`, `207ed4b`.
