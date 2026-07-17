@@ -109,7 +109,7 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
 5. [✅] Task 5 — Admin orders create(transaction+snapshot) + list + status + Telegram (REQ-ORD, REQ-NOTI-002)
    - Files: store/orders.go (CreateOrderWithItems transaction + snapshot + tính tiền + chặn overflow), cmd/server/admin_orders.go (4 handler), openapi Order*. Commit 75a0fde → 48a5de3.
    - Gate: HELD-OUT PASS (snapshot giá, rollback, tính tiền, phân trang, status). go-reviewer FAIL → bắt lỗi tài chính: cắt quantity int→int32 (data corruption âm thầm), tràn int64 tiền, customer FK→500, không giới hạn item → fix (trần quantity/tiền/item, map FK 23503→400) → re-verify PASS. Nhảy bậc status confirmed→done cho phép (chủ đích: giao tận tay).
-6. [ ] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
+6. [⏳] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
 7. [ ] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
    - security-review scope thêm (từ go-reviewer Task 2): (a) CSRF cho admin mutations POST/PUT/DELETE (SameSite=Lax hiện đủ cho form cross-site nhưng cân nhắc double-submit/Origin check khi có mutation); (b) quy ước "mọi route cần auth phải dưới /api/v1/admin/*" — kiểm không route mutation nào đặt ngoài prefix mà quên bảo vệ.
 
