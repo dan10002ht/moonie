@@ -5,6 +5,13 @@
 
 import type { components } from "@/types/api";
 
+/** Sản phẩm public — re-export để UI (GĐ3) import gọn, không lôi cả `components`. */
+export type Product = components["schemas"]["Product"];
+/** Payload form liên hệ gửi lên `POST /leads`. */
+export type LeadInput = components["schemas"]["LeadInput"];
+/** Kết quả tạo lead — chỉ chứa `id`. */
+export type LeadCreated = components["schemas"]["LeadCreated"];
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080/api/v1";
 
@@ -68,4 +75,25 @@ export async function apiFetch<T>(
  */
 export function getHealth(): Promise<components["schemas"]["Health"]> {
   return apiFetch<components["schemas"]["Health"]>("/healthz");
+}
+
+/**
+ * Danh sách sản phẩm public (đã ẩn `hidden`, sắp theo thứ tự hiển thị).
+ * Contract gate: nếu schema `Product` đổi shape, `tsc --noEmit` fail tại đây.
+ */
+export function getProducts(): Promise<Product[]> {
+  return apiFetch<Product[]>("/products");
+}
+
+/**
+ * Gửi form liên hệ → tạo lead. Trả `LeadCreated {id}` khi 201.
+ * Ném `ApiError` khi thất bại — caller phân biệt theo `status`:
+ *   - 400: dữ liệu không hợp lệ (message lấy từ body `{error}`).
+ *   - 429: gửi quá nhiều yêu cầu (rate limit) — nên báo khách thử lại sau.
+ */
+export function createLead(input: LeadInput): Promise<LeadCreated> {
+  return apiFetch<LeadCreated>("/leads", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
