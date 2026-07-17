@@ -18,7 +18,12 @@
 - [x] **Giai đoạn 3 — Landing HOÀN THÀNH (4/4) 2026-07-17**: trang chủ khớp mockup 1:1 (header/hero/trust/collection/corporate/craft/flavors/testimonials/footer + bottom sheet form). Đọc GET /products, form → POST /leads → admin + Telegram. design-evaluator ≥8/10 mọi task. Product model mở rộng: badge, compare_at_price, subtitle (migration 0005). Playwright + screenshot loop.
 - [x] **Giai đoạn 4 — Auth admin + API admin HOÀN THÀNH (7/7) 2026-07-17**: JWT httpOnly + middleware; admin products(CRUD+upload ảnh), leads(list/status/convert→đơn), orders(nhập tay transaction+snapshot giá), customers(CRUD), dashboard(doanh thu giờ VN). Phân trang {items,total} leads/orders/customers. Security-review tổng: không HIGH/CRITICAL; rate-limit login. Deploy-gate GĐ6 ghi ở BRIEF task 0/0b.
 - [x] **Giai đoạn 5 — Admin UI HOÀN THÀNH (5/5) 2026-07-17**: đăng nhập /admin/login + shell + dashboard + quản lý sản phẩm(upload ảnh)/leads(convert)/đơn hàng(nhập tay)/khách hàng, shadcn/ui theo tokens Mooni. Mọi task qua held-out Playwright + design-evaluator ≥8/10.
-- [ ] **Giai đoạn 6 — Deploy VPS — BƯỚC CUỐI** (Docker Compose production + Caddy HTTPS + backup Postgres; security deploy-gate BRIEF task 0/0b: đổi mật khẩu admin, real-IP sau proxy, headers; cần VPS+domain+Telegram token+ảnh thật của chủ dự án)
+- [~] **Giai đoạn 6 — Deploy VPS — HẠ TẦNG XONG, CHỜ TÀI NGUYÊN (2026-07-18)**:
+  - ✅ Task 0 — rate-limit theo IP client thật sau proxy (ClientIPResolver + TRUSTED_PROXIES, chống spoof XFF). Held-out 13/13 + go-reviewer PASS.
+  - ✅ Task 0b — security deploy-gate: seed prod-guard (đổi mật khẩu admin bắt buộc), header bảo mật toàn cục API + CSP web, CSRF Origin-check, IsProduction case-fold. Held-out 12/12 + go-reviewer PASS.
+  - ✅ Task 1 — docker-compose.prod + Caddyfile (HTTPS/HSTS) + backup/restore (test round-trip thật) + runbook. Compose valid.
+  - ✅ Security-review milestone #2 (trước deploy): 0 finding ≥8 confidence.
+  - ⛔ **CHỜ chủ dự án**: VPS + domain, Telegram bot token + chat id, ảnh sản phẩm thật, và điền `.env` production (JWT_SECRET ≥32, SEED_ADMIN_PASSWORD mạnh, ALLOWED_ORIGIN, TRUSTED_PROXIES). Deploy thật + cấp TLS chỉ verify được khi có các thứ này.
 
 ## Ghi chú kỹ thuật phát sinh (giai đoạn 1)
 
