@@ -161,9 +161,26 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 	fileServer := http.StripPrefix("/uploads", http.FileServer(noDirFS{fs: http.Dir(uploadsDir)}))
 	r.Handle("/uploads/*", nosniffUploads(fileServer))
 
-	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
+	// Mọi route mount qua HandlerWithOptions để gắn ErrorHandlerFunc TÙY BIẾN: khi
+	// oapi-codegen không bind được query/path param (sai kiểu — offset tràn int,
+	// id không phải uuid), mặc định nó trả TEXT THÔ lộ lỗi stdlib Go
+	// ("strconv.ParseInt: value out of range", "invalid UUID length: 10"). Ép về
+	// JSON {error} với message CHUNG (không chèn err.Error()) để nhất quán với phần
+	// còn lại của API và không lộ nội bộ (NFR-006, một lần cho toàn API).
+	api.HandlerWithOptions(srv, api.ChiServerOptions{
+		BaseURL:          "/api/v1",
+		BaseRouter:       r,
+		ErrorHandlerFunc: paramBindErrorHandler,
+	})
 
 	return r
+}
+
+// paramBindErrorHandler xử lý lỗi bind param (query/path sai kiểu) từ oapi-codegen:
+// trả 400 JSON {error} với message chung, KHÔNG chèn err.Error() (tránh lộ chi tiết
+// stdlib Go cho client).
+func paramBindErrorHandler(w http.ResponseWriter, _ *http.Request, _ error) {
+	httpx.WriteError(w, http.StatusBadRequest, "tham số không hợp lệ")
 }
 
 // noDirFS bọc một http.FileSystem để TẮT directory listing: Open trả lỗi
