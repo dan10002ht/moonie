@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -54,25 +55,37 @@ func (t *TelegramNotifier) NotifyNewLead(ctx context.Context, lead LeadInfo) err
 	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", t.apiBase, t.token)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("notify telegram: build request: %w", err)
+		// http.NewRequestWithContext trả *url.Error khi URL dị dạng (apiBase/token
+		// chứa ký tự lạ); Error() của nó chứa NGUYÊN URL kèm token → phải bóc lấy
+		// nguyên nhân gốc để không rò token ra log.
+		return fmt.Errorf("notify telegram: build request: %w", stripURLError(err))
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := t.client.Do(req)
 	if err != nil {
 		// *url.Error.Error() bao gồm URL (có token) → chỉ dùng nguyên nhân gốc.
-		var uerr *url.Error
-		if errors.As(err, &uerr) {
-			return fmt.Errorf("notify telegram: request failed: %w", uerr.Err)
-		}
-		return fmt.Errorf("notify telegram: request failed: %w", err)
+		return fmt.Errorf("notify telegram: request failed: %w", stripURLError(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		// Drain body để http keep-alive tái dùng được kết nối (không rò connection).
+		_, _ = io.Copy(io.Discard, resp.Body)
 		return fmt.Errorf("notify telegram: unexpected status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// stripURLError bóc *url.Error (Error() của nó chứa nguyên URL kèm bot token) và
+// trả về nguyên nhân gốc, để thông điệp lỗi log ra KHÔNG bao giờ lộ token. Lỗi
+// không phải *url.Error thì trả nguyên trạng.
+func stripURLError(err error) error {
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
+		return uerr.Err
+	}
+	return err
 }
 
 // formatLeadMessage dựng nội dung tiếng Việt gửi cho chủ shop. Chứa SĐT đầy đủ

@@ -108,6 +108,22 @@ func TestTelegramNotifierDeadEndpoint(t *testing.T) {
 	}
 }
 
+// TestTelegramNotifierMalformedURLNoTokenLeak: khi apiBase/token chứa ký tự lạ →
+// http.NewRequestWithContext trả *url.Error có URL kèm token. Nhánh build-request
+// phải bóc lỗi để thông điệp KHÔNG chứa token (BẢO MẬT).
+func TestTelegramNotifierMalformedURLNoTokenLeak(t *testing.T) {
+	const secretToken = "SECRET\x7fTOKEN123" // ký tự điều khiển → url.Parse fail
+	n := notify.NewTelegramNotifier(secretToken, "1", "http://localhost")
+
+	err := n.NotifyNewLead(context.Background(), notify.LeadInfo{Name: "A", Phone: "0900000000"})
+	if err == nil {
+		t.Fatal("mong đợi error khi URL dị dạng")
+	}
+	if strings.Contains(err.Error(), "SECRET") || strings.Contains(err.Error(), "TOKEN123") {
+		t.Errorf("thông điệp lỗi build-request lộ token: %v", err)
+	}
+}
+
 // TestNoopNotifier: luôn trả nil (không gửi gì).
 func TestNoopNotifier(t *testing.T) {
 	if err := (notify.NoopNotifier{}).NotifyNewLead(context.Background(), notify.LeadInfo{Phone: "0912345678"}); err != nil {
