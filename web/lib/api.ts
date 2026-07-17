@@ -19,6 +19,23 @@ export type LeadCreated = components["schemas"]["LeadCreated"];
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080/api/v1";
 
+/**
+ * Gốc phục vụ file tĩnh (ảnh upload) — API mount `/uploads/*` ở root origin,
+ * NGOÀI tiền tố `/api/v1`. Suy ra bằng cách bỏ đuôi `/api/v1` khỏi API_BASE.
+ */
+export const MEDIA_BASE = API_BASE.replace(/\/api\/v1\/?$/, "");
+
+/**
+ * Giải đường dẫn ảnh sản phẩm về URL tuyệt đối cho `<img>` phía browser.
+ * `image_url` từ API là `/uploads/<file>` (nội bộ) hoặc URL http(s) đầy đủ.
+ * Trả `null` nếu không có ảnh → caller hiện placeholder.
+ */
+export function mediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${MEDIA_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 /** Lỗi HTTP từ API — mang theo status code để caller xử lý ngữ nghĩa. */
 export class ApiError extends Error {
   readonly status: number;

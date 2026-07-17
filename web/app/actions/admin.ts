@@ -1,12 +1,40 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import type { components } from "@/types/api";
 import { API_BASE, ApiError } from "@/lib/api";
 import { ADMIN_COOKIE, adminFetch } from "@/lib/admin-api";
 
 /** 3 chỉ số tổng quan dashboard (schema `Dashboard` sinh từ OpenAPI). */
 export type Dashboard = components["schemas"]["Dashboard"];
+
+/** Sản phẩm admin (gồm cả `hidden`) — schema `Product` sinh từ OpenAPI. */
+export type AdminProduct = components["schemas"]["Product"];
+/** Payload tạo/sửa sản phẩm — schema `ProductInput` sinh từ OpenAPI. */
+export type ProductInput = components["schemas"]["ProductInput"];
+/** Kết quả upload ảnh — schema `ImageUploadResult` sinh từ OpenAPI. */
+export type ImageUploadResult = components["schemas"]["ImageUploadResult"];
+
+/**
+ * Kết quả một thao tác ghi (tạo/sửa/upload). `ok:false` mang `message` lấy từ
+ * body `{error}` của API (400 dữ liệu sai, 409 slug trùng…) để form hiện lỗi.
+ */
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; message: string };
+
+/** Chuyển lỗi bất kỳ (thường `ApiError`) thành `ActionResult` thất bại. */
+function toFailure(err: unknown): { ok: false; message: string } {
+  if (err instanceof ApiError) return { ok: false, message: err.message };
+  return { ok: false, message: "Đã có lỗi xảy ra, vui lòng thử lại." };
+}
+
+/** Làm mới cache trang admin sản phẩm + landing (ảnh hưởng danh sách public). */
+function revalidateProducts(): void {
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+}
 
 /** Kết quả đăng nhập trả về client (LoginForm) để hiện lỗi khi thất bại. */
 export type LoginResult =
@@ -132,6 +160,147 @@ export async function logoutAction(): Promise<void> {
  */
 export async function getDashboard(): Promise<Dashboard> {
   return adminFetch<Dashboard>("/admin/dashboard");
+}
+
+/**
+ * Danh sách TẤT CẢ sản phẩm (gồm `hidden`) cho bảng quản trị. Gọi GET
+ * {API}/admin/products kèm cookie phiên. Ném `ApiError` (401) để caller xử lý.
+ */
+export async function listProducts(): Promise<AdminProduct[]> {
+  return adminFetch<AdminProduct[]>("/admin/products");
+}
+
+/**
+ * Tạo sản phẩm mới. POST {API}/admin/products. 201 → trả sản phẩm; 400/409 →
+ * `ok:false` kèm message (vd slug trùng). Revalidate list + landing khi thành công.
+ */
+export async function createProduct(
+  input: ProductInput,
+): Promise<ActionResult<AdminProduct>> {
+  try {
+    const data = await adminFetch<AdminProduct>("/admin/products", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    revalidateProducts();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Cập nhật sản phẩm. PUT {API}/admin/products/{id}. 200 → trả bản mới; 400/404/409
+ * → `ok:false` kèm message.
+ */
+export async function updateProduct(
+  id: string,
+  input: ProductInput,
+): Promise<ActionResult<AdminProduct>> {
+  try {
+    const data = await adminFetch<AdminProduct>(
+      `/admin/products/${encodeURIComponent(id)}`,
+      { method: "PUT", body: JSON.stringify(input) },
+    );
+    revalidateProducts();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Xóa (soft delete → status `hidden`) sản phẩm. DELETE {API}/admin/products/{id}.
+ * API trả 204 không body → không parse JSON; gọi fetch trực tiếp (forward cookie).
+ */
+export async function deleteProduct(
+  id: string,
+): Promise<ActionResult<null>> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_BASE}/admin/products/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: token ? { Cookie: `${ADMIN_COOKIE}=${token}` } : undefined,
+        cache: "no-store",
+      },
+    );
+  } catch {
+    return { ok: false, message: "Không kết nối được máy chủ, vui lòng thử lại." };
+  }
+  if (response.status === 204) {
+    revalidateProducts();
+    return { ok: true, data: null };
+  }
+  let message = `Xóa thất bại (status ${response.status}).`;
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "error" in body &&
+      typeof (body as { error: unknown }).error === "string"
+    ) {
+      message = (body as { error: string }).error;
+    }
+  } catch {
+    // giữ message mặc định
+  }
+  return { ok: false, message };
+}
+
+/**
+ * Upload ảnh cho sản phẩm. POST {API}/admin/products/{id}/image dạng multipart
+ * (field `file`). KHÔNG đặt Content-Type thủ công — để fetch tự sinh boundary từ
+ * FormData; adminFetch không dùng được vì nó ép `application/json`.
+ */
+export async function uploadProductImage(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult<ImageUploadResult>> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Chưa chọn tệp ảnh." };
+  }
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_BASE}/admin/products/${encodeURIComponent(id)}/image`,
+      {
+        method: "POST",
+        headers: token ? { Cookie: `${ADMIN_COOKIE}=${token}` } : undefined,
+        body: formData,
+        cache: "no-store",
+      },
+    );
+  } catch {
+    return { ok: false, message: "Không kết nối được máy chủ, vui lòng thử lại." };
+  }
+  if (response.status === 200) {
+    const data = (await response.json()) as ImageUploadResult;
+    revalidateProducts();
+    return { ok: true, data };
+  }
+  let message = `Upload ảnh thất bại (status ${response.status}).`;
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "error" in body &&
+      typeof (body as { error: unknown }).error === "string"
+    ) {
+      message = (body as { error: string }).error;
+    }
+  } catch {
+    // giữ message mặc định
+  }
+  return { ok: false, message };
 }
 
 /** Re-export cho caller phân biệt lỗi theo status khi cần. */
