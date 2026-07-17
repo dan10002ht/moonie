@@ -41,3 +41,4 @@
 ### Giai đoạn 5 — Admin UI
 - **Task 1** — Admin shell + login + dashboard (shadcn/ui map tokens Mooni navy-gold, Server Action + cookie forward, proxy guard). qa-evaluator held-out 5/5 + design-evaluator 9/9/8/9. Commit `8b80095`, `f9e9345`.
 - **Task 2** — Admin quản lý sản phẩm: bảng (gồm hidden) + dialog form tạo/sửa + upload ảnh (soft delete, preview). held-out 6/6 + design-evaluator 9/9/8/10. Commit `33fd088`, `32c5089`, `cc73efd`.
+- **Task 3** — Admin quản lý leads: bảng phân trang + đổi status + convert→đơn (SĐT/lời nhắn hiện đủ, làm rõ nhãn convert vs trạng thái). held-out 6/6 + design-evaluator 9/9/8/10. Commit `1a145c7`, `cb74f38`.

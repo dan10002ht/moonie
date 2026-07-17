@@ -132,8 +132,10 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-5-admin-ui.md`. Mỗi task UI
 2. [✅] Task 2 — Quản lý sản phẩm: table + form + upload ảnh (REQ-PROD-002/003 UI)
    - Files: web/app/admin/(shell)/products/page.tsx, components/admin/products-manager.tsx + product-form-dialog.tsx, ui/{table,dialog,select,textarea,badge}, actions CRUD+upload. Commit 33fd088 → 32c5089 → cc73efd.
    - Gate: held-out 6/6 (CRUD+upload qua UI, bảng có hidden, validate) sau fix thiếu name attribute. design-evaluator 9/9/8/10 → fix tokenize màu pill.
-3. [⏳] Task 3 — Quản lý leads: table phân trang + status + convert (REQ-LEAD-004/005 UI)
-4. [ ] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
+3. [✅] Task 3 — Quản lý leads: table phân trang + status + convert (REQ-LEAD-004/005 UI)
+   - Files: web/app/admin/(shell)/leads/page.tsx, components/admin/leads-manager.tsx, lib/lead-labels.ts. Commit 1a145c7 → cb74f38.
+   - Gate: held-out 6/6 (sau làm rõ nhãn convert "Chuyển thành đơn" vs status "Đã lên đơn" — UX thật + held-out selector chắc hơn). design-evaluator 9/9/8/10. Backlog: mobile table card layout (chung mọi trang admin).
+4. [⏳] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
 5. [ ] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
