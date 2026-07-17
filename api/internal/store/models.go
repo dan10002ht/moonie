@@ -17,6 +17,19 @@ type AdminUser struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type Customer struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Phone     *string            `json:"phone"`
+	Email     *string            `json:"email"`
+	Company   *string            `json:"company"`
+	Address   *string            `json:"address"`
+	Type      string             `json:"type"`
+	Note      *string            `json:"note"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Lead struct {
 	ID              pgtype.UUID        `json:"id"`
 	Name            string             `json:"name"`
@@ -26,6 +39,33 @@ type Lead struct {
 	Source          string             `json:"source"`
 	Status          string             `json:"status"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	OrderID         pgtype.UUID        `json:"order_id"`
+}
+
+type Order struct {
+	ID              pgtype.UUID        `json:"id"`
+	Code            string             `json:"code"`
+	CustomerID      pgtype.UUID        `json:"customer_id"`
+	Channel         string             `json:"channel"`
+	Status          string             `json:"status"`
+	Subtotal        int64              `json:"subtotal"`
+	Discount        int64              `json:"discount"`
+	Total           int64              `json:"total"`
+	DeliveryDate    pgtype.Date        `json:"delivery_date"`
+	DeliveryAddress *string            `json:"delivery_address"`
+	Note            *string            `json:"note"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type OrderItem struct {
+	ID          pgtype.UUID        `json:"id"`
+	OrderID     pgtype.UUID        `json:"order_id"`
+	ProductID   pgtype.UUID        `json:"product_id"`
+	ProductName string             `json:"product_name"`
+	UnitPrice   int64              `json:"unit_price"`
+	Quantity    int32              `json:"quantity"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Product struct {

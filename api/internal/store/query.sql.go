@@ -11,6 +11,65 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countCustomers = `-- name: CountCustomers :one
+SELECT count(*) FROM customers
+`
+
+func (q *Queries) CountCustomers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCustomers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countLeads = `-- name: CountLeads :one
+SELECT count(*) FROM leads
+`
+
+func (q *Queries) CountLeads(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countLeads)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countNewLeads = `-- name: CountNewLeads :one
+
+SELECT count(*) FROM leads WHERE status = 'new'
+`
+
+// =====================================================================
+// Dashboard (REQ-DASH-001)
+// =====================================================================
+func (q *Queries) CountNewLeads(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countNewLeads)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOrders = `-- name: CountOrders :one
+SELECT count(*) FROM orders
+`
+
+func (q *Queries) CountOrders(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrders)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProcessingOrders = `-- name: CountProcessingOrders :one
+SELECT count(*) FROM orders WHERE status IN ('confirmed', 'delivering')
+`
+
+func (q *Queries) CountProcessingOrders(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countProcessingOrders)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAdminUser = `-- name: CreateAdminUser :one
 INSERT INTO admin_users (email, password_hash, name, role)
 VALUES ($1, $2, $3, $4)
@@ -39,6 +98,52 @@ func (q *Queries) CreateAdminUser(ctx context.Context, arg CreateAdminUserParams
 		&i.Name,
 		&i.Role,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createCustomer = `-- name: CreateCustomer :one
+
+INSERT INTO customers (name, phone, email, company, address, type, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, phone, email, company, address, type, note, created_at, updated_at
+`
+
+type CreateCustomerParams struct {
+	Name    string  `json:"name"`
+	Phone   *string `json:"phone"`
+	Email   *string `json:"email"`
+	Company *string `json:"company"`
+	Address *string `json:"address"`
+	Type    string  `json:"type"`
+	Note    *string `json:"note"`
+}
+
+// =====================================================================
+// Customers (REQ-CUST-001)
+// =====================================================================
+func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
+	row := q.db.QueryRow(ctx, createCustomer,
+		arg.Name,
+		arg.Phone,
+		arg.Email,
+		arg.Company,
+		arg.Address,
+		arg.Type,
+		arg.Note,
+	)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Email,
+		&i.Company,
+		&i.Address,
+		&i.Type,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -75,6 +180,97 @@ func (q *Queries) CreateLead(ctx context.Context, arg CreateLeadParams) (CreateL
 	return i, err
 }
 
+const createOrder = `-- name: CreateOrder :one
+
+INSERT INTO orders (code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note, created_at, updated_at
+`
+
+type CreateOrderParams struct {
+	Code            string      `json:"code"`
+	CustomerID      pgtype.UUID `json:"customer_id"`
+	Channel         string      `json:"channel"`
+	Status          string      `json:"status"`
+	Subtotal        int64       `json:"subtotal"`
+	Discount        int64       `json:"discount"`
+	Total           int64       `json:"total"`
+	DeliveryDate    pgtype.Date `json:"delivery_date"`
+	DeliveryAddress *string     `json:"delivery_address"`
+	Note            *string     `json:"note"`
+}
+
+// =====================================================================
+// Orders + order_items (REQ-ORD-001/003/004)
+// =====================================================================
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
+	row := q.db.QueryRow(ctx, createOrder,
+		arg.Code,
+		arg.CustomerID,
+		arg.Channel,
+		arg.Status,
+		arg.Subtotal,
+		arg.Discount,
+		arg.Total,
+		arg.DeliveryDate,
+		arg.DeliveryAddress,
+		arg.Note,
+	)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.CustomerID,
+		&i.Channel,
+		&i.Status,
+		&i.Subtotal,
+		&i.Discount,
+		&i.Total,
+		&i.DeliveryDate,
+		&i.DeliveryAddress,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createOrderItem = `-- name: CreateOrderItem :one
+INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, order_id, product_id, product_name, unit_price, quantity, created_at
+`
+
+type CreateOrderItemParams struct {
+	OrderID     pgtype.UUID `json:"order_id"`
+	ProductID   pgtype.UUID `json:"product_id"`
+	ProductName string      `json:"product_name"`
+	UnitPrice   int64       `json:"unit_price"`
+	Quantity    int32       `json:"quantity"`
+}
+
+// Dòng đơn với snapshot product_name + unit_price (REQ-ORD-004).
+func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error) {
+	row := q.db.QueryRow(ctx, createOrderItem,
+		arg.OrderID,
+		arg.ProductID,
+		arg.ProductName,
+		arg.UnitPrice,
+		arg.Quantity,
+	)
+	var i OrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.ProductName,
+		&i.UnitPrice,
+		&i.Quantity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getAdminUserByEmail = `-- name: GetAdminUserByEmail :one
 SELECT id, email, password_hash, name, role, created_at
 FROM admin_users
@@ -93,6 +289,230 @@ func (q *Queries) GetAdminUserByEmail(ctx context.Context, email string) (AdminU
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getCustomer = `-- name: GetCustomer :one
+SELECT id, name, phone, email, company, address, type, note, created_at, updated_at
+FROM customers
+WHERE id = $1
+`
+
+func (q *Queries) GetCustomer(ctx context.Context, id pgtype.UUID) (Customer, error) {
+	row := q.db.QueryRow(ctx, getCustomer, id)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Email,
+		&i.Company,
+		&i.Address,
+		&i.Type,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getOrder = `-- name: GetOrder :one
+SELECT id, code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note, created_at, updated_at
+FROM orders
+WHERE id = $1
+`
+
+func (q *Queries) GetOrder(ctx context.Context, id pgtype.UUID) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrder, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.CustomerID,
+		&i.Channel,
+		&i.Status,
+		&i.Subtotal,
+		&i.Discount,
+		&i.Total,
+		&i.DeliveryDate,
+		&i.DeliveryAddress,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listCustomers = `-- name: ListCustomers :many
+SELECT id, name, phone, email, company, address, type, note, created_at, updated_at
+FROM customers
+ORDER BY created_at DESC, id
+LIMIT $1 OFFSET $2
+`
+
+type ListCustomersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// Danh sách khách hàng cho admin, phân trang (mới nhất trước).
+func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error) {
+	rows, err := q.db.Query(ctx, listCustomers, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Customer
+	for rows.Next() {
+		var i Customer
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Company,
+			&i.Address,
+			&i.Type,
+			&i.Note,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeadsAdmin = `-- name: ListLeadsAdmin :many
+
+SELECT id, name, phone, message, product_interest, source, status, created_at, order_id
+FROM leads
+ORDER BY created_at DESC, id
+LIMIT $1 OFFSET $2
+`
+
+type ListLeadsAdminParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// =====================================================================
+// Leads admin (REQ-LEAD-004/005)
+// =====================================================================
+// Danh sách lead cho admin, phân trang (mới nhất trước).
+func (q *Queries) ListLeadsAdmin(ctx context.Context, arg ListLeadsAdminParams) ([]Lead, error) {
+	rows, err := q.db.Query(ctx, listLeadsAdmin, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Lead
+	for rows.Next() {
+		var i Lead
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Message,
+			&i.ProductInterest,
+			&i.Source,
+			&i.Status,
+			&i.CreatedAt,
+			&i.OrderID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrderItemsByOrder = `-- name: ListOrderItemsByOrder :many
+SELECT id, order_id, product_id, product_name, unit_price, quantity, created_at
+FROM order_items
+WHERE order_id = $1
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListOrderItemsByOrder(ctx context.Context, orderID pgtype.UUID) ([]OrderItem, error) {
+	rows, err := q.db.Query(ctx, listOrderItemsByOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrderItem
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.ProductName,
+			&i.UnitPrice,
+			&i.Quantity,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrders = `-- name: ListOrders :many
+SELECT id, code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note, created_at, updated_at
+FROM orders
+ORDER BY created_at DESC, id
+LIMIT $1 OFFSET $2
+`
+
+type ListOrdersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// Danh sách đơn hàng cho admin, phân trang (mới nhất trước).
+func (q *Queries) ListOrders(ctx context.Context, arg ListOrdersParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listOrders, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.CustomerID,
+			&i.Channel,
+			&i.Status,
+			&i.Subtotal,
+			&i.Discount,
+			&i.Total,
+			&i.DeliveryDate,
+			&i.DeliveryAddress,
+			&i.Note,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listVisibleProducts = `-- name: ListVisibleProducts :many
@@ -137,4 +557,142 @@ func (q *Queries) ListVisibleProducts(ctx context.Context) ([]Product, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const setLeadOrder = `-- name: SetLeadOrder :exec
+UPDATE leads
+SET status = 'converted', order_id = $2
+WHERE id = $1
+`
+
+type SetLeadOrderParams struct {
+	ID      pgtype.UUID `json:"id"`
+	OrderID pgtype.UUID `json:"order_id"`
+}
+
+// Convert lead → đơn: gắn order_id và đánh dấu đã chuyển đổi (REQ-LEAD-005).
+func (q *Queries) SetLeadOrder(ctx context.Context, arg SetLeadOrderParams) error {
+	_, err := q.db.Exec(ctx, setLeadOrder, arg.ID, arg.OrderID)
+	return err
+}
+
+const sumRevenueThisMonth = `-- name: SumRevenueThisMonth :one
+SELECT coalesce(sum(total), 0)::bigint
+FROM orders
+WHERE status = 'done' AND created_at >= date_trunc('month', now())
+`
+
+// Doanh thu tháng hiện tại = tổng total các đơn đã 'done' tạo trong tháng.
+func (q *Queries) SumRevenueThisMonth(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, sumRevenueThisMonth)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const updateCustomer = `-- name: UpdateCustomer :one
+UPDATE customers
+SET name = $2, phone = $3, email = $4, company = $5, address = $6, type = $7, note = $8, updated_at = now()
+WHERE id = $1
+RETURNING id, name, phone, email, company, address, type, note, created_at, updated_at
+`
+
+type UpdateCustomerParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Name    string      `json:"name"`
+	Phone   *string     `json:"phone"`
+	Email   *string     `json:"email"`
+	Company *string     `json:"company"`
+	Address *string     `json:"address"`
+	Type    string      `json:"type"`
+	Note    *string     `json:"note"`
+}
+
+func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error) {
+	row := q.db.QueryRow(ctx, updateCustomer,
+		arg.ID,
+		arg.Name,
+		arg.Phone,
+		arg.Email,
+		arg.Company,
+		arg.Address,
+		arg.Type,
+		arg.Note,
+	)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Email,
+		&i.Company,
+		&i.Address,
+		&i.Type,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateLeadStatus = `-- name: UpdateLeadStatus :one
+UPDATE leads
+SET status = $2
+WHERE id = $1
+RETURNING id, name, phone, message, product_interest, source, status, created_at, order_id
+`
+
+type UpdateLeadStatusParams struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) UpdateLeadStatus(ctx context.Context, arg UpdateLeadStatusParams) (Lead, error) {
+	row := q.db.QueryRow(ctx, updateLeadStatus, arg.ID, arg.Status)
+	var i Lead
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Message,
+		&i.ProductInterest,
+		&i.Source,
+		&i.Status,
+		&i.CreatedAt,
+		&i.OrderID,
+	)
+	return i, err
+}
+
+const updateOrderStatus = `-- name: UpdateOrderStatus :one
+UPDATE orders
+SET status = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note, created_at, updated_at
+`
+
+type UpdateOrderStatusParams struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
+	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ID, arg.Status)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.CustomerID,
+		&i.Channel,
+		&i.Status,
+		&i.Subtotal,
+		&i.Discount,
+		&i.Total,
+		&i.DeliveryDate,
+		&i.DeliveryAddress,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
