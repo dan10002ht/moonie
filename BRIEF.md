@@ -22,8 +22,11 @@ Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (m�
    - Files: api/migrations/0001_init (admin_users), cmd/migrate, sqlc.yaml + internal/store (New/CreateAdminUser/GetAdminUserByEmail + generated), store_test.go (testcontainers postgres:16). Commit ed1e6ea; fixup 0e74f8b (make lint + docs).
    - Gate: generator BÁO SAI "lint exit 0" → verify độc lập ra lint FAIL (typecheck testcontainers). Root cause: shim `cc` phá CGO → cần CGO_ENABLED=0. Đã thêm make lint/test với CGO_ENABLED=0 → PASS thật (make lint 0 issues, make test gồm integration pass). Ghi ràng buộc vào CLAUDE.md + memory.
    - DEVIATION: Go floor 1.23→1.25 (testcontainers v0.43), pgx→v5.9.2. Task 7 CI phải setup-go ≥1.25.
-5. [⏳] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
-6. [ ] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
+5. [✅] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
+   - Next 16.2.10 + Tailwind v4 (@theme trong globals.css), React 19.2.4. Files: web/ (layout font Playfair+Be Vietnam, page placeholder tokens, lib/api.ts apiFetch generic, proxy.ts skeleton /admin). Commit dc40754.
+   - Gate PASS (verify độc lập): tsc sạch, lint sạch, build Turbopack xanh, tokens render thật (bg-navy/gold/font-serif), tiếng Việt OK. Placeholder — design-evaluator vs mockup để dành landing thật (giai đoạn 3).
+   - Node 20.19 thỏa (Next 16 cần ≥20.9). web/CLAUDE.md+AGENTS.md do scaffold tạo, giữ (note Next 16, không xung đột).
+6. [⏳] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
 7. [ ] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
 8. [ ] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
 
