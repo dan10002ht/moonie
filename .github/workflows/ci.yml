@@ -1,0 +1,72 @@
+name: CI
+
+# Gác cổng lint -> test -> build cho cả 2 phía (NFR-007).
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    name: API (Go) lint + test
+    runs-on: ubuntu-latest
+    # CGO_ENABLED=0: testcontainers chạy pure-Go được; đồng nhất với make test/lint
+    # trên máy dev (shim cc). Runner ubuntu-latest có sẵn Docker → testcontainers
+    # tự spin Postgres:16 cho integration test (KHÔNG cần service container).
+    env:
+      CGO_ENABLED: "0"
+      GOTOOLCHAIN: local
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          # go.mod yêu cầu 1.25 (testcontainers-go v0.43). Dùng đúng go.mod.
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.12.2
+          working-directory: api
+
+      - name: go test
+        run: go test ./... -count=1
+
+  web:
+    name: Web (Next.js) typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Generate API types (contract gate)
+        run: npm run gen:api
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

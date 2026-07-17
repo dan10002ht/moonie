@@ -1,0 +1,7 @@
+# Chỉ cần source Go để build. Bỏ artifacts và file không liên quan.
+bin/
+tmp/
+*.test
+Dockerfile
+.dockerignore
+.golangci.yml

@@ -1,0 +1,9 @@
+# Không copy artifacts/local vào build context.
+node_modules/
+.next/
+out/
+coverage/
+npm-debug.log*
+Dockerfile
+.dockerignore
+tsconfig.tsbuildinfo
