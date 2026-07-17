@@ -5,9 +5,10 @@ up:
 
 gen:
 	cd api && GOTOOLCHAIN=local go generate ./...
+	cd api && sqlc generate
 
 migrate:
-	# điền ở task sau
+	cd api && set -a && . ../.env && set +a && GOTOOLCHAIN=local go run ./cmd/migrate up
 
 test:
-	# điền ở task sau
+	cd api && GOTOOLCHAIN=local CGO_ENABLED=0 go test ./... -count=1
