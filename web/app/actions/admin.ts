@@ -38,6 +38,8 @@ export type OrderCreated = components["schemas"]["OrderCreated"];
 export type Customer = components["schemas"]["Customer"];
 /** Danh sách khách hàng phân trang — schema `CustomerList` sinh từ OpenAPI. */
 export type CustomerList = components["schemas"]["CustomerList"];
+/** Payload tạo/sửa khách hàng — schema `CustomerInput` sinh từ OpenAPI. */
+export type CustomerInput = components["schemas"]["CustomerInput"];
 
 /**
  * Kết quả một thao tác ghi (tạo/sửa/upload). `ok:false` mang `message` lấy từ
@@ -480,6 +482,58 @@ export async function listCustomers(
 export async function listCustomersForPicker(): Promise<Customer[]> {
   const data = await listCustomers(100, 0);
   return data.items;
+}
+
+/** Làm mới cache trang admin khách hàng sau khi tạo/sửa. */
+function revalidateCustomers(): void {
+  revalidatePath("/admin/customers");
+}
+
+/**
+ * Chi tiết một khách hàng. Gọi GET {API}/admin/customers/{id} kèm cookie phiên.
+ * Ném `ApiError` (401/404) để caller xử lý.
+ */
+export async function getCustomer(id: string): Promise<Customer> {
+  return adminFetch<Customer>(`/admin/customers/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Tạo khách hàng mới. POST {API}/admin/customers. 201 → trả khách; 400 (tên rỗng,
+ * SĐT/email sai định dạng, type sai enum) → `ok:false` kèm message. Revalidate list.
+ */
+export async function createCustomer(
+  input: CustomerInput,
+): Promise<ActionResult<Customer>> {
+  try {
+    const data = await adminFetch<Customer>("/admin/customers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    revalidateCustomers();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Cập nhật khách hàng. PUT {API}/admin/customers/{id}. 200 → trả bản mới; 400/404
+ * → `ok:false` kèm message. Revalidate list khi thành công.
+ */
+export async function updateCustomer(
+  id: string,
+  input: CustomerInput,
+): Promise<ActionResult<Customer>> {
+  try {
+    const data = await adminFetch<Customer>(
+      `/admin/customers/${encodeURIComponent(id)}`,
+      { method: "PUT", body: JSON.stringify(input) },
+    );
+    revalidateCustomers();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
 }
 
 /** Re-export cho caller phân biệt lỗi theo status khi cần. */
