@@ -2,13 +2,16 @@
 
 # ── Deps stage ───────────────────────────────────────────────────────────────
 # alpine → base nhỏ hơn slim ~60-70MB. libc6-compat cho các prebuilt (swc) cần glibc.
-# Cài dependencies theo lockfile (npm ci) tách riêng để cache khi chỉ code đổi.
+# Cài dependencies tách riêng để cache khi chỉ code đổi.
 # Cache mount /root/.npm → rebuild không tải lại package đã có.
+# npm install (không npm ci): lock sinh trên darwin thiếu native binary
+# @tailwindcss/oxide-linux-x64-musl (alpine) — optionalDependencies theo os/cpu.
+# npm install vẫn theo lock cho dep nhất quán, chỉ reconcile native binary theo platform.
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund
 
 # ── Build stage ──────────────────────────────────────────────────────────────
 # next.config bật output:"standalone" → sinh .next/standalone (server tối giản).

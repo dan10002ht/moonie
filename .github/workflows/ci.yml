@@ -60,7 +60,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install deps
-        run: npm ci
+        # npm install (không npm ci): Tailwind v4 @tailwindcss/oxide có native binary
+        # theo platform (optionalDependencies os/cpu). Lock sinh trên darwin thiếu biến thể
+        # linux-x64-gnu → npm ci fail trên runner linux. npm install vẫn tôn trọng lock cho
+        # mọi dep nhất quán, chỉ reconcile native binary theo platform. (Colima local không
+        # regen được lock linux để dùng npm ci thuần.)
+        run: npm install --no-audit --no-fund
 
       - name: Generate API types (contract gate)
         run: npm run gen:api
