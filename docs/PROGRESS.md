@@ -30,6 +30,7 @@
 - Còn treo: migrate ticket-mcrsv sang Colima + tắt Docker Desktop (side-quest, chờ sau).
 - **Phân trang (chốt 2026-07-17)**: `GET /products` list-all (tập nhỏ, cố ý). Admin lists `leads`/`orders`/`customers` BẮT BUỘC paginate (limit/offset mặc định 20, max 100, mới nhất trước) — bake vào plan GĐ4/5.
 - GitHub remote: https://github.com/dan10002ht/moonie.git (push 2026-07-17, CI chạy thật).
+- **Docker nhẹ hóa (2026-07-17)**: dọn ~1.9GB (images 3.0GB→1.1GB). Chuẩn hóa `postgres:16-alpine` (musl) ở docker-compose + testcontainers (store_test) thay postgres:16 (debian 657MB). Deploy GĐ6 cũng dùng alpine để nhất quán collation. Dev volume tạo lại fresh (data chỉ là seed).
 
 ## Quyết định đã chốt (không mở lại nếu không có lý do mới)
 

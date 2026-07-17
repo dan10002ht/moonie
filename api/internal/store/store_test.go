@@ -1,5 +1,5 @@
 // Integration test cho package store: chạy Postgres THẬT qua testcontainers-go
-// (NFR-004, pipeline test mục 3 — không mock DB). Test spin container postgres:16,
+// (NFR-004, pipeline test mục 3 — không mock DB). Test spin container postgres:16-alpine,
 // áp migration, rồi round-trip CreateAdminUser → GetAdminUserByEmail.
 package store_test
 
@@ -20,13 +20,13 @@ import (
 	"github.com/moonie/api/internal/store"
 )
 
-// newTestDB spin một Postgres:16 ephemeral, áp migration trong ../../migrations,
+// newTestDB spin một Postgres:16-alpine ephemeral, áp migration trong ../../migrations,
 // và trả về pool sẵn sàng dùng. Container tự hủy qua t.Cleanup.
 func newTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
 
-	container, err := tcpostgres.Run(ctx, "postgres:16",
+	container, err := tcpostgres.Run(ctx, "postgres:16-alpine",
 		tcpostgres.WithDatabase("mooni"),
 		tcpostgres.WithUsername("mooni"),
 		tcpostgres.WithPassword("mooni"),
