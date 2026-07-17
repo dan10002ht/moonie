@@ -14,8 +14,8 @@
 - [x] Agent `ba-writer` (2026-07-17): duy trì tài liệu BA chính thống trong `docs/ba/` (BRD, SRS, FRS, data dictionary, traceability) — phái sinh từ spec/code, cập nhật cuối mỗi giai đoạn, phát hiện mâu thuẫn thì báo không tự xử
 - [x] Plan giai đoạn 1: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md`
 - [x] **Giai đoạn 1 — Scaffold (8/8 task) HOÀN THÀNH 2026-07-17**: monorepo web/ (Next.js 16 + Tailwind v4 tokens) + api/ (Go chi/pgx/sqlc, healthz, graceful shutdown) + docker-compose (Postgres:5440 Colima) + OpenAPI contract 2 phía (oapi-codegen + openapi-typescript) + migrations/sqlc + testcontainers + CI GitHub Actions + Dockerfile + skill run-moonie + seed admin. App chạy đầu-cuối thật.
-- [ ] **Giai đoạn 2 — API nghiệp vụ: products + leads + Telegram notify — BƯỚC TIẾP THEO**
-- [ ] Giai đoạn 3 — Landing page từ mockup `design/mooni-landing.html`
+- [x] **Giai đoạn 2 — API Public HOÀN THÀNH (4/4) 2026-07-17**: GET /products (ẩn hidden, ORDER BY tất định), POST /leads (validate SĐT VN + rate limit 20/phút chống spoof + log che SĐT), Telegram notify fail-safe (TELEGRAM_API_BASE override), web client getProducts/createLead. Mọi feature qua held-out gate + go-reviewer.
+- [ ] **Giai đoạn 3 — Landing page từ mockup `design/mooni-landing.html` — BƯỚC TIẾP THEO** (lần đầu design-evaluator + screenshot loop vào cuộc; chủ dự án sẽ thấy giao diện thật)
 - [ ] Giai đoạn 4 — Auth admin + API admin (orders, leads, products, customers)
 - [ ] Giai đoạn 5 — Admin UI
 - [ ] Giai đoạn 6 — Deploy VPS (Docker Compose + Caddy + backup) + security-review

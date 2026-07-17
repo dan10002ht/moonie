@@ -58,7 +58,12 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-2-api-public.md`. Feature tas
    - Files: internal/notify (Notifier interface, NoopNotifier, TelegramNotifier + TELEGRAM_API_BASE override, maskPhone), config TelegramAPIBase, leads.go gọi notify async fire-and-forget goroutine + timeout, main.go newNotifier. Commit 4fb4a0d → 7b59e92.
    - Gate: HELD-OUT PASS 3/3 (notify mock <5s, FAIL-SAFE Telegram treo→POST vẫn 201 0.007s + lead lưu, no-token no-op). go-reviewer PASS → fix rò token bot ở log (bảo mật) + drain body. Race test sạch.
    - Fire-and-forget goroutine không chờ shutdown (chấp nhận theo thiết kế, notify best-effort, lead luôn lưu).
-4. [ ] Task 4 — web api client getProducts + createLead (nền REQ-LAND-002/003)
+4. [✅] Task 4 — web api client getProducts + createLead (nền REQ-LAND-002/003)
+   - web/lib/api.ts: getProducts(): Promise<Product[]>, createLead(input): Promise<LeadCreated>, re-export types. ApiError mang status (UI phân biệt 400/429). Commit 54a31d1.
+   - Gate PASS (verify độc lập): tsc sạch (gate chứng minh sai type→TS2322), lint sạch, build xanh, không any.
+
+### ✅ GIAI ĐOẠN 2 HOÀN THÀNH (4/4) — 2026-07-17
+API public đầy đủ: GET /products, POST /leads (validate + rate limit), Telegram notify fail-safe, web client. Mọi feature qua held-out gate + go-reviewer. Landing GĐ3 có đủ API để gọi.
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
