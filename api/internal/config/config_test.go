@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/moonie/api/internal/config"
@@ -86,6 +87,36 @@ func TestLoad(t *testing.T) {
 			}
 			if tt.check != nil {
 				tt.check(t, c)
+			}
+		})
+	}
+}
+
+func TestValidateJWTSecret(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  string
+		wantErr bool
+	}{
+		{name: "rỗng", secret: "", wantErr: true},
+		{name: "placeholder", secret: "change-me-in-production", wantErr: true},
+		{name: "quá ngắn (<32)", secret: "short-secret", wantErr: true},
+		{name: "đúng 31 ký tự vẫn thiếu", secret: "0123456789012345678901234567890", wantErr: true},
+		{name: "đủ 32 ký tự hợp lệ", secret: "01234567890123456789012345678901", wantErr: false},
+		{name: "secret ngẫu nhiên dài", secret: "kJ8sVq2m+random/base64==padding-9876543210ABCDEF", wantErr: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := config.ValidateJWTSecret(tt.secret)
+			if tt.wantErr && err == nil {
+				t.Fatalf("secret %q: mong đợi lỗi, got nil", tt.secret)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("secret %q: mong đợi nil, got %v", tt.secret, err)
+			}
+			// Error KHÔNG được chứa giá trị secret (không leak).
+			if err != nil && tt.secret != "" && strings.Contains(err.Error(), tt.secret) {
+				t.Errorf("error message leak secret: %v", err)
 			}
 		})
 	}

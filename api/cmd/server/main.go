@@ -62,9 +62,11 @@ func run() error {
 		return err
 	}
 
-	// JWT_SECRET bắt buộc: thiếu thì không thể ký/kiểm phiên admin an toàn (NFR-005).
-	if cfg.JWTSecret == "" {
-		return errors.New("thiếu biến môi trường JWT_SECRET")
+	// JWT_SECRET bắt buộc VÀ phải đủ mạnh: fail-fast lúc khởi động nếu rỗng, quá
+	// ngắn (<32 ký tự), hoặc còn là placeholder — tránh footgun deploy khiến
+	// attacker đoán được secret rồi tự ký JWT bypass admin (NFR-005, defense-in-depth).
+	if err := config.ValidateJWTSecret(cfg.JWTSecret); err != nil {
+		return err
 	}
 
 	// Bắt tín hiệu dừng để graceful shutdown; ctx này sống suốt vòng đời server.

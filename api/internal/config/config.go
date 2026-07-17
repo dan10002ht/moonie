@@ -29,6 +29,32 @@ func (c *Config) IsProduction() bool {
 // TELEGRAM_API_BASE (chủ yếu để test trỏ vào mock server).
 const defaultTelegramAPIBase = "https://api.telegram.org"
 
+// minJWTSecretLen là độ dài tối thiểu (byte) của JWT_SECRET. HMAC-SHA256 an toàn
+// khi khoá ≥ 256 bit; 32 ký tự là ngưỡng thực dụng chống brute-force/đoán.
+const minJWTSecretLen = 32
+
+// placeholderJWTSecret là giá trị placeholder ship kèm .env.example. Từ chối đúng
+// giá trị này để tránh footgun deploy quên đổi (attacker đoán được secret → tự ký
+// JWT hợp lệ → bypass toàn bộ admin).
+const placeholderJWTSecret = "change-me-in-production"
+
+// ValidateJWTSecret kiểm tra JWT_SECRET đủ mạnh: không rỗng, ≥ minJWTSecretLen ký
+// tự, và KHÔNG phải giá trị placeholder. Trả error mô tả (KHÔNG chứa secret) kèm
+// hướng dẫn sinh khoá mạnh. Gọi lúc khởi động để fail-fast trước khi serve.
+func ValidateJWTSecret(secret string) error {
+	const hint = "sinh bằng: openssl rand -base64 48"
+	switch {
+	case secret == "":
+		return fmt.Errorf("JWT_SECRET bắt buộc và phải ≥%d ký tự — %s", minJWTSecretLen, hint)
+	case secret == placeholderJWTSecret:
+		return fmt.Errorf("JWT_SECRET đang dùng giá trị placeholder không an toàn — %s", hint)
+	case len(secret) < minJWTSecretLen:
+		return fmt.Errorf("JWT_SECRET phải ≥%d ký tự và không dùng giá trị placeholder — %s", minJWTSecretLen, hint)
+	default:
+		return nil
+	}
+}
+
 // Load đọc cấu hình từ biến môi trường. DATABASE_URL là bắt buộc; thiếu sẽ trả
 // error. Port mặc định "8080" khi không set.
 func Load() (*Config, error) {
