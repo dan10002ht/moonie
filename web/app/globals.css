@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Mooni Cake — design tokens (REQ-ADM-001).
+   Nguồn chân lý: design/mooni-design-system.html. */
+@theme {
+  --color-navy: #041e4f;
+  --color-navy-light: #0b2a64;
+  --color-gold: #c6a867;
+  --color-gold-deep: #b0925a;
+  --color-cream: #f7f6f4;
+  --color-ink: #22201b;
+  --color-border: #e6e4de;
+}
+
+/* Font variables được cấp qua next/font/google trong app/layout.tsx. */
+@theme inline {
+  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-be-vietnam);
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
