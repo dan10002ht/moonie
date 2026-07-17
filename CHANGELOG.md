@@ -20,3 +20,6 @@
 - **Task 4** — web api client `getProducts()` + `createLead()` (typed từ OpenAPI, ApiError mang status cho UI phân biệt 400/429). tsc contract gate. Commit `54a31d1`.
 - **🎉 Giai đoạn 2 (API Public) hoàn thành 4/4** — GET /products, POST /leads, Telegram notify, web client. Landing (GĐ3) đã đủ API.
 - **Hạ tầng**: Docker nhẹ hóa ~1.9GB (postgres:16-alpine chuẩn hóa dev/test/CI). CI GitHub xanh thật.
+
+### Giai đoạn 3 — Landing page
+- **Task 1** — Seed 7 sản phẩm mẫu khớp mockup (3 hộp quà + 4 bánh lẻ) + field `badge` (migration 0004) cho nhãn "Bán chạy"/"Mới" + cài Playwright. Commit `bd6b935`, `bc41529`.

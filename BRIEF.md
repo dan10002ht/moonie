@@ -69,8 +69,10 @@ API public đầy đủ: GET /products, POST /leads (validate + rate limit), Tel
 
 Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI: screenshot loop (2 viewport so mockup) + design-evaluator ≥8/10. Task 4 thêm qa-evaluator (held-out interaction).
 
-1. [ ] Task 1 — seed products khớp mockup + cài Playwright (nền REQ-LAND-002)
-2. [ ] Task 2 — landing frame: header/hero/trust/footer/sticky CTA (REQ-LAND-001/004)
+1. [✅] Task 1 — seed products khớp mockup + cài Playwright (nền REQ-LAND-002)
+   - Seed 7 sản phẩm khớp mockup (3 gift_box + 4 single_cake, tất cả available). Thêm field `badge` (migration 0004, nullable) cho badge marketing: Thập cẩm="Bán chạy", Trà xanh="Mới". Seed chuyển upsert (sửa được data cũ). Playwright 1.61.1 cài. Commit bd6b935 → bc41529.
+   - Sửa sai lệch mockup: mockup có 4 bánh lẻ (không 3), không cái nào sold_out (plan ghi sai) → đã khớp. Held-out products vẫn PASS 12/12 sau thêm badge (contract cũ nguyên).
+2. [⏳] Task 2 — landing frame: header/hero/trust/footer/sticky CTA (REQ-LAND-001/004)
 3. [ ] Task 3 — product & content sections, wire GET /products (REQ-LAND-001/002)
 4. [ ] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
 
