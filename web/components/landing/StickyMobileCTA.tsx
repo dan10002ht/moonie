@@ -19,9 +19,6 @@ export function StickyMobileCTA() {
       <button
         type="button"
         data-open-contact="1"
-        onClick={() => {
-          /* TODO(Task 4): mở bottom sheet liên hệ */
-        }}
         className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-steel p-[14px] font-sans text-[15px] font-bold text-white"
       >
         <ChatIcon size={17} />

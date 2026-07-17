@@ -54,7 +54,6 @@ export function MobileMenu() {
             type="button"
             data-open-contact="1"
             onClick={close}
-            /* TODO(Task 4): mở bottom sheet liên hệ */
             className="mt-[10px] flex w-full cursor-pointer items-center justify-center gap-2 rounded-[5px] bg-steel p-[14px] font-sans text-[15px] font-bold text-white"
           >
             <ChatIcon size={17} />
