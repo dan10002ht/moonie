@@ -1,4 +1,4 @@
-.PHONY: up gen migrate test lint check
+.PHONY: up gen migrate seed test lint check
 
 # Lưu ý môi trường máy dev này:
 # - CGO_ENABLED=0 bắt buộc cho test/lint: shim `cc` của Claude Code (~/.local/bin/cc)
@@ -18,6 +18,11 @@ gen:
 
 migrate:
 	cd api && set -a && . ../.env && set +a && GOTOOLCHAIN=local go run ./cmd/migrate up
+
+# seed: nạp admin mẫu (idempotent). Chạy sau migrate. Đặt SEED_ADMIN_PASSWORD để
+# đổi mật khẩu; mặc định "mooni-admin". Env từ .env (DATABASE_URL) + shell.
+seed:
+	cd api && set -a && . ../.env && set +a && GOTOOLCHAIN=local go run ./cmd/seed
 
 test:
 	cd api && $(TC_ENV) GOTOOLCHAIN=local CGO_ENABLED=0 go test ./... -count=1
