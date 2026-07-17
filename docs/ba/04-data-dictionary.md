@@ -1,8 +1,12 @@
 # 04 — Data Dictionary — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `961ed54`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
-> ⚠️ **Sinh từ mục Database (spec §3) — `api/migrations/` CHƯA tồn tại. Sẽ đối chiếu lại với migrations thật khi code.** Kiểu dữ liệu cụ thể (varchar/numeric/timestamp, khóa, index, đơn vị tiền) chưa được spec định nghĩa nên KHÔNG ghi ở đây — chỉ ghi thuộc tính nghiệp vụ và ràng buộc mà spec nêu.
+> ⚠️ **Sinh từ mục Database (spec §3).** Sau GĐ1 (Scaffold) mới có duy nhất migration `0001_init.up.sql` cho bảng `admin_users` — bảng này ĐÃ đối chiếu code thật (xem §6). Năm bảng nghiệp vụ còn lại (`products`, `leads`, `customers`, `orders`, `order_items`) CHƯA có migration — vẫn là spec, kiểu dữ liệu cụ thể (varchar/numeric/timestamp, khóa, index, đơn vị tiền) chưa được spec định nghĩa nên KHÔNG ghi ở đây; chỉ ghi thuộc tính nghiệp vụ và ràng buộc mà spec nêu, chờ migration đối chiếu.
+
+> **Ghi nhận thực tại GĐ1** (không sửa yêu cầu nghiệp vụ, chỉ ghi để chủ dự án nắm):
+> - `admin_users.role`: migration đặt `DEFAULT 'admin'` và KHÔNG có ràng buộc CHECK liệt kê giá trị. Thực tại GĐ1 chỉ dùng 1 role `'admin'`; spec vẫn chưa chốt danh sách role. Nếu sau này cần phân quyền nhiều role, cần migration bổ sung.
+> - `admin_users.password_hash` kiểu `text`; seed (`api/cmd/seed`) sinh hash **bcrypt** (`$2a$…`), khớp yêu cầu "không lưu plaintext" của spec.
 
 DB: PostgreSQL 16. 6 bảng. Truy vấn chỉ qua sqlc; migration chỉ thêm file mới (CLAUDE.md).
 
@@ -71,11 +75,15 @@ Ràng buộc nghiệp vụ: order tạo cùng `order_items` trong 1 transaction 
 
 ## 6. `admin_users` — tài khoản quản trị
 
-| Thuộc tính | Ràng buộc/giá trị | Ý nghĩa nghiệp vụ |
-|---|---|---|
-| email | validate định dạng | Định danh đăng nhập |
-| password hash | bcrypt | Không lưu plaintext |
-| tên | — | |
-| role | — | Spec chưa liệt kê các giá trị role (⚠️ chốt khi làm migrations) |
+> ✅ **Đã khớp migration `0001_init.up.sql`** (GĐ1, task 4). Cột/kiểu/ràng buộc dưới đây lấy trực tiếp từ migration thật, không còn là suy diễn từ spec.
 
-Ràng buộc nghiệp vụ: không có đăng ký public — bản ghi tạo bằng CLI seed (spec §6).
+| Cột | Kiểu | Ràng buộc | Ý nghĩa nghiệp vụ |
+|---|---|---|---|
+| `id` | `uuid` | PRIMARY KEY, DEFAULT `gen_random_uuid()` | Khóa chính; UUID sinh phía DB (Postgres 13+ có sẵn, không cần pgcrypto) |
+| `email` | `text` | UNIQUE, NOT NULL | Định danh đăng nhập; duy nhất |
+| `password_hash` | `text` | NOT NULL | Hash bcrypt (`$2a$…`) — không lưu plaintext |
+| `name` | `text` | nullable | Tên hiển thị admin |
+| `role` | `text` | NOT NULL, DEFAULT `'admin'` | Vai trò; hiện chỉ dùng `'admin'`, không có CHECK liệt kê giá trị (xem "Ghi nhận thực tại GĐ1") |
+| `created_at` | `timestamptz` | NOT NULL, DEFAULT `now()` | Thời điểm tạo bản ghi |
+
+Ràng buộc nghiệp vụ: không có đăng ký public — bản ghi tạo bằng CLI seed (`api/cmd/seed`, idempotent `ON CONFLICT`), spec §6.
