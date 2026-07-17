@@ -24,7 +24,8 @@
 
 - Không giỏ hàng/thanh toán online (tránh đăng ký TMĐT với Bộ Công Thương). Đặt hàng qua lead form.
 - Stack: Next.js 16 (quyết định 2026-07-17: bản stable hiện hành, Turbopack mặc định, dự án mới không có lý do dùng 15) + Go (chi, pgx, sqlc) + PostgreSQL, monorepo, VPS + Docker.
-- Lead mới → lưu DB **và** bắn Telegram Bot.
+- Lead mới VÀ đơn mới → lưu DB **và** bắn Telegram Bot (chốt 2026-07-17 sau khi ba-writer phát hiện spec mâu thuẫn).
+- Tồn kho = trạng thái còn/hết, không đếm số lượng. Doanh thu tháng = đơn `done`. Convert lead KHÔNG tự tạo customer (`orders.customer_id` nullable).
 - Admin quản lý: đơn hàng, leads, sản phẩm & tồn kho, khách hàng.
 - Mockup trong `design/` là nguồn chân lý UI, không sửa.
 
