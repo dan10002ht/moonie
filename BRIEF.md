@@ -4,11 +4,18 @@
 > Quy tắc vận hành: xem CLAUDE.md mục "Vòng lặp task". Evaluator PASS mới được mark ✅.
 > Chủ dự án thêm task mới = thêm dòng `[ ]`. Task cần mô tả đủ để làm không phải hỏi lại; thiếu thông tin thì agent ghi chú blocker thay vì đoán.
 
-## Giai đoạn 1 — Scaffold (đổ task chi tiết từ plan sau khi viết plan)
+## Giai đoạn 1 — Scaffold
 
-_(trống — chờ writing-plans cho giai đoạn 1; 1 task đã chốt trước:)_
+Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (mỗi task có DoD + step + trace REQ).
 
-1. [ ] Viết project skill `run-moonie` (dùng skill writing-skills): quy trình boot chuẩn duy nhất cho mọi agent — docker compose up + đợi healthcheck + migrate + seed data mẫu + URL/port từng service. DoD: agent mới toanh chỉ đọc skill là dựng được app chạy thật; qa-evaluator và design-evaluator dùng skill này thay vì tự ứng biến. (Làm CUỐI giai đoạn 1, khi app đã tồn tại)
+1. [ ] Task 1 — Docker Compose + Postgres + khung env (NFR-008, NFR-005)
+2. [ ] Task 2 — Go API skeleton: config, chi router, /healthz, error helper (NFR-006, NFR-005)
+3. [ ] Task 3 — OpenAPI spec-first + oapi-codegen contract gate phía Go (SRS §5, NFR-006)
+4. [ ] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
+5. [ ] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
+6. [ ] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
+7. [ ] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
+8. [ ] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
