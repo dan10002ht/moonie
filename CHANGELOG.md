@@ -37,3 +37,6 @@
 - **Task 6** — Admin customers CRUD phân trang (validate name/type/phone/email ở boundary, không leak SĐT/email log). go-reviewer PASS → chuẩn hóa lỗi bind param → JSON {error} toàn API. Commit `498255d`, `5d5497a`.
 - **Task 7** — Admin dashboard (leads mới/đơn xử lý/doanh thu tháng giờ VN) + security-review TỔNG (không HIGH/CRITICAL; xác nhận authz không sót, JWT/upload/overflow/injection đạt) → fix M1 rate-limit login chống brute-force. Commit `f904bea`, `0499b98`.
 - **🎉 Giai đoạn 4 (Admin API) hoàn thành 7/7** — backend admin đầy đủ, security-review sạch. Còn admin UI (GĐ5) + deploy (GĐ6).
+
+### Giai đoạn 5 — Admin UI
+- **Task 1** — Admin shell + login + dashboard (shadcn/ui map tokens Mooni navy-gold, Server Action + cookie forward, proxy guard). qa-evaluator held-out 5/5 + design-evaluator 9/9/8/9. Commit `8b80095`, `f9e9345`.
