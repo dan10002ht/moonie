@@ -83,6 +83,7 @@ Mỗi feature đi theo pipeline, KHÔNG bỏ bước:
 7. **Sửa theo feedback** evaluator cho đến khi pass.
 8. **Verify** — skill verification-before-completion: chạy lệnh thật, thấy output thật rồi mới báo xong.
 9. **Cập nhật `BRIEF.md` (mark ✅ + tóm tắt), `CHANGELOG.md`, `docs/PROGRESS.md`** rồi commit.
+10. **Tài liệu BA (song song)** — khi kết thúc một GIAI ĐOẠN trong BRIEF.md hoặc spec thay đổi: dispatch agent `ba-writer` cập nhật `docs/ba/` (BRD, SRS, FRS, data dictionary, traceability). Không chạy per-task (tránh nhiễu); tài liệu BA là phái sinh — spec/code là nguồn chân lý, ba-writer phát hiện mâu thuẫn thì báo chủ dự án chứ không tự xử.
 
 Nguyên tắc harness: mỗi scaffold là một giả định model không tự làm được — thấy không còn cần thì gỡ. Giữ mọi thứ đơn giản nhất có thể.
 
@@ -108,6 +109,8 @@ Căn cứ: `docs/research/2026-07-17-per-task-testing.md` (claims đã verify).
 4. **Contract tests**: typed client sinh từ OpenAPI spec gọi backend Go đang chạy thật.
 5. **Playwright E2E tối thiểu**: happy paths + async Server Components (Vitest không render được async RSC — bắt buộc E2E).
 6. **Held-out gate**: `tests/heldout/` pass → evaluator mới được trả PASS.
+
+Ngoài pipeline per-task, chạy skill **security-review** ở 2 mốc bắt buộc: cuối giai đoạn auth admin (giai đoạn 4) và trước deploy production (giai đoạn 6). Finding mức cao chưa xử lý = không deploy.
 
 Contract: API là **spec-first OpenAPI** (`api/openapi.yaml`) — Go dùng `oapi-codegen` (ServerInterface, lệch spec = fail compile), web dùng `openapi-typescript`. Đổi API = sửa spec trước, regenerate 2 phía.
 
