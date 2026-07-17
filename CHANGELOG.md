@@ -16,3 +16,4 @@
 ### Giai đoạn 2 — API Public
 - **Task 1** — `GET /api/v1/products` public (bảng products, chỉ trả status != hidden, ORDER BY tất định). Held-out acceptance test 12/12 + go-reviewer PASS. Commit `3aedd62`, `207ed4b`.
 - **Task 2** — `POST /api/v1/leads` public (bảng leads, validate SĐT VN/tên/độ dài, rate limit 20/phút/IP theo RemoteAddr chống spoof, log che SĐT NFR-009, lưu status `new`). Held-out 7/7 (phơi vấn đề rate limit 5/phút chặn oan IP NAT doanh nghiệp → bump 20) + go-reviewer PASS. Commit `357eba7`, `1b4020d`.
+- **Task 3** — Telegram notify lead mới, fail-safe (goroutine + timeout, POST /leads luôn 201 dù Telegram lỗi/treo/không token; `TELEGRAM_API_BASE` override để test; log che SĐT; không rò token bot). Held-out 3/3 + go-reviewer PASS. Commit `4fb4a0d`, `7b59e92`.

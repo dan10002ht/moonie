@@ -54,7 +54,10 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-2-api-public.md`. Feature tas
    - Files: migration 0003_leads, internal/validate (Phone VN/RequiredName/MaxLen), store CreateLead, cmd/server/leads.go (CreateLead + maskPhone), rate limit httprate 20/phút/IP route riêng, openapi LeadInput/LeadCreated. Commit 357eba7 → 1b4020d.
    - Gate: HELD-OUT PASS 7/7 (generator không đọc held-out). Held-out phơi vấn đề thiết kế thật: rate limit 5/phút chặn oan IP NAT doanh nghiệp → bump 20/phút. go-reviewer PASS, xác nhận rate-limit KHÔNG bypass được qua header giả (keyByRemoteIP dùng RemoteAddr).
    - Minor follow-up (không chặn): product_interest chưa có MaxLen (bounded 64KB body). Xử lý sau nếu cần.
-3. [⏳] Task 3 — Telegram notify khi lead mới, fail-safe (REQ-NOTI-001, NFR-001)
+3. [✅] Task 3 — Telegram notify khi lead mới, fail-safe (REQ-NOTI-001, NFR-001)
+   - Files: internal/notify (Notifier interface, NoopNotifier, TelegramNotifier + TELEGRAM_API_BASE override, maskPhone), config TelegramAPIBase, leads.go gọi notify async fire-and-forget goroutine + timeout, main.go newNotifier. Commit 4fb4a0d → 7b59e92.
+   - Gate: HELD-OUT PASS 3/3 (notify mock <5s, FAIL-SAFE Telegram treo→POST vẫn 201 0.007s + lead lưu, no-token no-op). go-reviewer PASS → fix rò token bot ở log (bảo mật) + drain body. Race test sạch.
+   - Fire-and-forget goroutine không chờ shutdown (chấp nhận theo thiết kế, notify best-effort, lead luôn lưu).
 4. [ ] Task 4 — web api client getProducts + createLead (nền REQ-LAND-002/003)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
