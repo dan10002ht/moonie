@@ -225,6 +225,7 @@ export function ProductFormDialog({
               </Label>
               <Input
                 id="pf-name"
+                name="name"
                 value={values.name}
                 onChange={(e) => setField("name", e.target.value)}
                 disabled={pending}
@@ -242,6 +243,7 @@ export function ProductFormDialog({
               </Label>
               <Input
                 id="pf-slug"
+                name="slug"
                 value={values.slug}
                 onChange={(e) => setField("slug", e.target.value)}
                 disabled={pending}
@@ -260,6 +262,7 @@ export function ProductFormDialog({
             </Label>
             <Input
               id="pf-subtitle"
+              name="subtitle"
               value={values.subtitle}
               onChange={(e) => setField("subtitle", e.target.value)}
               disabled={pending}
@@ -273,6 +276,7 @@ export function ProductFormDialog({
             </Label>
             <Textarea
               id="pf-description"
+              name="description"
               value={values.description}
               onChange={(e) => setField("description", e.target.value)}
               disabled={pending}
@@ -288,6 +292,7 @@ export function ProductFormDialog({
               </Label>
               <Input
                 id="pf-price"
+                name="price"
                 type="number"
                 min={0}
                 inputMode="numeric"
@@ -308,6 +313,7 @@ export function ProductFormDialog({
               </Label>
               <Input
                 id="pf-compare"
+                name="compare_at_price"
                 type="number"
                 min={0}
                 inputMode="numeric"
@@ -323,6 +329,7 @@ export function ProductFormDialog({
             <div className="space-y-1.5">
               <Label className="text-ink">Loại</Label>
               <Select
+                name="type"
                 value={values.type}
                 onValueChange={(v) => setField("type", v)}
                 disabled={pending}
@@ -343,6 +350,7 @@ export function ProductFormDialog({
             <div className="space-y-1.5">
               <Label className="text-ink">Trạng thái</Label>
               <Select
+                name="status"
                 value={values.status}
                 onValueChange={(v) => setField("status", v)}
                 disabled={pending}
@@ -366,6 +374,7 @@ export function ProductFormDialog({
               </Label>
               <Input
                 id="pf-order"
+                name="display_order"
                 type="number"
                 inputMode="numeric"
                 value={values.displayOrder}
@@ -381,6 +390,7 @@ export function ProductFormDialog({
             </Label>
             <Input
               id="pf-badge"
+              name="badge"
               value={values.badge}
               onChange={(e) => setField("badge", e.target.value)}
               disabled={pending}
