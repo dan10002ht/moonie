@@ -19,9 +19,6 @@
 - [x] **Giai đoạn 4 — Auth admin + API admin HOÀN THÀNH (7/7) 2026-07-17**: JWT httpOnly + middleware; admin products(CRUD+upload ảnh), leads(list/status/convert→đơn), orders(nhập tay transaction+snapshot giá), customers(CRUD), dashboard(doanh thu giờ VN). Phân trang {items,total} leads/orders/customers. Security-review tổng: không HIGH/CRITICAL; rate-limit login. Deploy-gate GĐ6 ghi ở BRIEF task 0/0b.
 - [x] **Giai đoạn 5 — Admin UI HOÀN THÀNH (5/5) 2026-07-17**: đăng nhập /admin/login + shell + dashboard + quản lý sản phẩm(upload ảnh)/leads(convert)/đơn hàng(nhập tay)/khách hàng, shadcn/ui theo tokens Mooni. Mọi task qua held-out Playwright + design-evaluator ≥8/10.
 - [ ] **Giai đoạn 6 — Deploy VPS — BƯỚC CUỐI** (Docker Compose production + Caddy HTTPS + backup Postgres; security deploy-gate BRIEF task 0/0b: đổi mật khẩu admin, real-IP sau proxy, headers; cần VPS+domain+Telegram token+ảnh thật của chủ dự án)
-- [ ] Giai đoạn 4 — Auth admin + API admin (orders, leads, products, customers)
-- [ ] Giai đoạn 5 — Admin UI
-- [ ] Giai đoạn 6 — Deploy VPS (Docker Compose + Caddy + backup) + security-review
 
 ## Ghi chú kỹ thuật phát sinh (giai đoạn 1)
 
