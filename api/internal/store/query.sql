@@ -22,6 +22,47 @@ FROM products
 WHERE status != 'hidden'
 ORDER BY display_order, created_at, id;
 
+-- name: ListAllProducts :many
+-- Sản phẩm cho admin: GỒM cả status='hidden'. Thứ tự TẤT ĐỊNH (display_order,
+-- created_at, id) để list ổn định giữa các lần gọi (REQ-PROD-002).
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+FROM products
+ORDER BY display_order, created_at, id;
+
+-- name: GetProductByID :one
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+FROM products
+WHERE id = $1;
+
+-- name: CreateProduct :one
+-- Tạo sản phẩm (REQ-PROD-002). Validate (name/price/type/status/slug) ở tầng
+-- handler; ràng buộc CHECK + UNIQUE(slug) ở DB là lớp phòng thủ cuối.
+INSERT INTO products (slug, name, description, price, type, status, image_url, display_order, badge, compare_at_price, subtitle)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle;
+
+-- name: UpdateProduct :one
+-- Cập nhật toàn bộ thuộc tính sản phẩm theo id (REQ-PROD-002).
+UPDATE products
+SET slug = $2, name = $3, description = $4, price = $5, type = $6, status = $7,
+    image_url = $8, display_order = $9, badge = $10, compare_at_price = $11,
+    subtitle = $12, updated_at = now()
+WHERE id = $1
+RETURNING id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle;
+
+-- name: DeleteProduct :exec
+-- Xóa MỀM: đặt status='hidden'. An toàn hơn xóa cứng vì order_items tham chiếu
+-- product_id (giữ toàn vẹn lịch sử đơn hàng) (REQ-PROD-002).
+UPDATE products
+SET status = 'hidden', updated_at = now()
+WHERE id = $1;
+
+-- name: UpdateProductImage :exec
+-- Cập nhật ảnh sản phẩm sau khi upload thành công (REQ-PROD-003).
+UPDATE products
+SET image_url = $2, updated_at = now()
+WHERE id = $1;
+
 -- name: CreateLead :one
 -- Tạo lead mới từ form liên hệ public. source mặc định 'website', status mặc định
 -- 'new' (REQ-LEAD-002/003). Trả id + status để handler xác nhận.

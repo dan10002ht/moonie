@@ -21,6 +21,10 @@ test-results/
 # DB / Docker volumes
 pgdata/
 
+# Ảnh sản phẩm upload (REQ-PROD-003) — lưu volume/backup ở production, không commit
+uploads/
+api/uploads/
+
 # OS / editor
 .DS_Store
 *.log

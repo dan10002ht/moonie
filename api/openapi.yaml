@@ -136,6 +136,197 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/products:
+    get:
+      operationId: listAdminProducts
+      summary: Danh sách sản phẩm cho admin (gồm cả hidden)
+      description: >-
+        Trả về TẤT CẢ sản phẩm kể cả status='hidden', sắp tất định theo
+        display_order rồi created_at rồi id. Cần auth admin (REQ-PROD-002).
+      responses:
+        "200":
+          description: Danh sách sản phẩm (gồm hidden)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createProduct
+      summary: Tạo sản phẩm mới
+      description: >-
+        Tạo sản phẩm. Validate: name không rỗng, slug không rỗng, price ≥ 0,
+        type ∈ {gift_box, single_cake}, status ∈ {available, sold_out, hidden}.
+        Slug trùng → 409. Cần auth admin (REQ-PROD-002).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Đã tạo sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Dữ liệu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Slug đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/products/{id}:
+    put:
+      operationId: updateProduct
+      summary: Cập nhật sản phẩm
+      description: >-
+        Cập nhật toàn bộ thuộc tính sản phẩm theo id. Validate như tạo mới.
+        Slug trùng → 409, không tìm thấy → 404. Cần auth admin (REQ-PROD-002).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          description: Đã cập nhật sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Dữ liệu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Slug đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteProduct
+      summary: Xóa (ẩn) sản phẩm
+      description: >-
+        Xóa MỀM: đặt status='hidden' (an toàn hơn xóa cứng vì order_items tham
+        chiếu product_id). Cần auth admin (REQ-PROD-002).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Đã ẩn sản phẩm (soft delete)
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/products/{id}/image:
+    post:
+      operationId: uploadProductImage
+      summary: Upload ảnh sản phẩm
+      description: >-
+        Nhận file ảnh (multipart/form-data, field tên "file"), validate loại
+        (image/png|jpeg|webp) và kích thước (≤ 5MB), lưu vào thư mục uploads/ và
+        đặt products.image_url = "/uploads/<file>". Cần auth admin (REQ-PROD-003).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Đã upload ảnh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadResult"
+        "400":
+          description: File không hợp lệ (thiếu, sai loại, quá lớn)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Product:
@@ -192,6 +383,59 @@ components:
           description: Nhãn phân loại nhỏ in hoa trên tên (vd "Hộp thiếc cao cấp"), null nếu không có
         display_order:
           type: integer
+    ProductInput:
+      type: object
+      required:
+        - slug
+        - name
+        - price
+        - type
+        - status
+      properties:
+        slug:
+          type: string
+          description: Định danh URL (duy nhất). Trùng → 409.
+        name:
+          type: string
+          description: Tên sản phẩm (bắt buộc, không rỗng)
+        description:
+          type: string
+          nullable: true
+        price:
+          type: integer
+          format: int64
+          description: Giá VND, số nguyên ≥ 0
+        type:
+          type: string
+          description: Loại sản phẩm. Hợp lệ- gift_box | single_cake
+        status:
+          type: string
+          description: Trạng thái. Hợp lệ- available | sold_out | hidden
+        image_url:
+          type: string
+          nullable: true
+        badge:
+          type: string
+          nullable: true
+        compare_at_price:
+          type: integer
+          format: int64
+          nullable: true
+        subtitle:
+          type: string
+          nullable: true
+        display_order:
+          type: integer
+          nullable: true
+          description: Thứ tự hiển thị (mặc định 0 nếu bỏ trống)
+    ImageUploadResult:
+      type: object
+      required:
+        - image_url
+      properties:
+        image_url:
+          type: string
+          description: Đường dẫn public của ảnh, vd "/uploads/<uuid>.png"
     LeadInput:
       type: object
       required:

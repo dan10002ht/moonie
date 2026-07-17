@@ -34,15 +34,18 @@ var _ api.ServerInterface = (*Server)(nil)
 // pool có thể nil trong test không cần DB (healthz không chạm DB). products là
 // querier sản phẩm, tách qua interface để handler test được bằng fake (không DB).
 type Server struct {
-	pool     *pgxpool.Pool
-	products productLister
-	leads    leadCreator
-	auth     adminStore
-	notifier notify.Notifier
+	pool         *pgxpool.Pool
+	products     productLister
+	productAdmin productAdminStore
+	leads        leadCreator
+	auth         adminStore
+	notifier     notify.Notifier
 	// jwtSecret là khoá HMAC ký/kiểm JWT phiên admin (từ env JWT_SECRET).
 	jwtSecret []byte
 	// secureCookie bật cờ Secure trên cookie phiên (true ở production).
 	secureCookie bool
+	// uploadsDir là thư mục lưu ảnh sản phẩm upload (REQ-PROD-003).
+	uploadsDir string
 }
 
 // GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
@@ -84,7 +87,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction()),
+		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction(), cfg.UploadsDir),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -115,7 +118,7 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool) http.Handler {
+func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool, uploadsDir string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -142,7 +145,14 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
 	q := store.New(pool)
-	srv := &Server{pool: pool, products: q, leads: q, auth: q, notifier: notifier, jwtSecret: jwtSecret, secureCookie: secureCookie}
+	srv := &Server{pool: pool, products: q, productAdmin: q, leads: q, auth: q, notifier: notifier, jwtSecret: jwtSecret, secureCookie: secureCookie, uploadsDir: uploadsDir}
+
+	// Serve tĩnh ảnh sản phẩm tại GET /uploads/* — PUBLIC (không auth) để landing
+	// hiển thị ảnh. Đặt NGOÀI prefix /api/v1/admin nên middleware auth không gác.
+	// http.FileServer + http.Dir tự làm sạch path (chống traversal ../) (REQ-PROD-003).
+	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir)))
+	r.Handle("/uploads/*", fileServer)
+
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r

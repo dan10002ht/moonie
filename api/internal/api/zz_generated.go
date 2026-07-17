@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -39,6 +40,12 @@ type Error struct {
 // Health defines model for Health.
 type Health struct {
 	Status string `json:"status"`
+}
+
+// ImageUploadResult defines model for ImageUploadResult.
+type ImageUploadResult struct {
+	// ImageUrl Đường dẫn public của ảnh, vd "/uploads/<uuid>.png"
+	ImageUrl string `json:"image_url"`
 }
 
 // LeadCreated defines model for LeadCreated.
@@ -104,6 +111,47 @@ type ProductStatus string
 // ProductType defines model for Product.Type.
 type ProductType string
 
+// ProductInput defines model for ProductInput.
+type ProductInput struct {
+	Badge          *string `json:"badge"`
+	CompareAtPrice *int64  `json:"compare_at_price"`
+	Description    *string `json:"description"`
+
+	// DisplayOrder Thứ tự hiển thị (mặc định 0 nếu bỏ trống)
+	DisplayOrder *int    `json:"display_order"`
+	ImageUrl     *string `json:"image_url"`
+
+	// Name Tên sản phẩm (bắt buộc, không rỗng)
+	Name string `json:"name"`
+
+	// Price Giá VND, số nguyên ≥ 0
+	Price int64 `json:"price"`
+
+	// Slug Định danh URL (duy nhất). Trùng → 409.
+	Slug string `json:"slug"`
+
+	// Status Trạng thái. Hợp lệ- available | sold_out | hidden
+	Status   string  `json:"status"`
+	Subtitle *string `json:"subtitle"`
+
+	// Type Loại sản phẩm. Hợp lệ- gift_box | single_cake
+	Type string `json:"type"`
+}
+
+// UploadProductImageMultipartBody defines parameters for UploadProductImage.
+type UploadProductImageMultipartBody struct {
+	File openapi_types.File `json:"file"`
+}
+
+// CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
+type CreateProductJSONRequestBody = ProductInput
+
+// UpdateProductJSONRequestBody defines body for UpdateProduct for application/json ContentType.
+type UpdateProductJSONRequestBody = ProductInput
+
+// UploadProductImageMultipartRequestBody defines body for UploadProductImage for multipart/form-data ContentType.
+type UploadProductImageMultipartRequestBody UploadProductImageMultipartBody
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
@@ -115,6 +163,21 @@ type ServerInterface interface {
 	// Thông tin admin đang đăng nhập
 	// (GET /admin/me)
 	GetAdminMe(w http.ResponseWriter, r *http.Request)
+	// Danh sách sản phẩm cho admin (gồm cả hidden)
+	// (GET /admin/products)
+	ListAdminProducts(w http.ResponseWriter, r *http.Request)
+	// Tạo sản phẩm mới
+	// (POST /admin/products)
+	CreateProduct(w http.ResponseWriter, r *http.Request)
+	// Xóa (ẩn) sản phẩm
+	// (DELETE /admin/products/{id})
+	DeleteProduct(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Cập nhật sản phẩm
+	// (PUT /admin/products/{id})
+	UpdateProduct(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Upload ảnh sản phẩm
+	// (POST /admin/products/{id}/image)
+	UploadProductImage(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Đăng nhập admin
 	// (POST /auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
@@ -139,6 +202,36 @@ type Unimplemented struct{}
 // Thông tin admin đang đăng nhập
 // (GET /admin/me)
 func (_ Unimplemented) GetAdminMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Danh sách sản phẩm cho admin (gồm cả hidden)
+// (GET /admin/products)
+func (_ Unimplemented) ListAdminProducts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tạo sản phẩm mới
+// (POST /admin/products)
+func (_ Unimplemented) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Xóa (ẩn) sản phẩm
+// (DELETE /admin/products/{id})
+func (_ Unimplemented) DeleteProduct(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Cập nhật sản phẩm
+// (PUT /admin/products/{id})
+func (_ Unimplemented) UpdateProduct(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Upload ảnh sản phẩm
+// (POST /admin/products/{id}/image)
+func (_ Unimplemented) UploadProductImage(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -186,6 +279,109 @@ func (siw *ServerInterfaceWrapper) GetAdminMe(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAdminMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminProducts operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminProducts(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminProducts(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateProduct operation middleware
+func (siw *ServerInterfaceWrapper) CreateProduct(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProduct(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProduct operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProduct(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProduct operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProduct(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProduct(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadProductImage operation middleware
+func (siw *ServerInterfaceWrapper) UploadProductImage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadProductImage(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -380,6 +576,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/me", wrapper.GetAdminMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/products", wrapper.ListAdminProducts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/products", wrapper.CreateProduct)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/admin/products/{id}", wrapper.DeleteProduct)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/products/{id}", wrapper.UpdateProduct)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/products/{id}/image", wrapper.UploadProductImage)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/login", wrapper.Login)

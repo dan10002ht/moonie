@@ -271,6 +271,75 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 	return i, err
 }
 
+const createProduct = `-- name: CreateProduct :one
+INSERT INTO products (slug, name, description, price, type, status, image_url, display_order, badge, compare_at_price, subtitle)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+`
+
+type CreateProductParams struct {
+	Slug           string  `json:"slug"`
+	Name           string  `json:"name"`
+	Description    *string `json:"description"`
+	Price          int64   `json:"price"`
+	Type           string  `json:"type"`
+	Status         string  `json:"status"`
+	ImageUrl       *string `json:"image_url"`
+	DisplayOrder   int32   `json:"display_order"`
+	Badge          *string `json:"badge"`
+	CompareAtPrice *int64  `json:"compare_at_price"`
+	Subtitle       *string `json:"subtitle"`
+}
+
+// Tạo sản phẩm (REQ-PROD-002). Validate (name/price/type/status/slug) ở tầng
+// handler; ràng buộc CHECK + UNIQUE(slug) ở DB là lớp phòng thủ cuối.
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
+	row := q.db.QueryRow(ctx, createProduct,
+		arg.Slug,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Type,
+		arg.Status,
+		arg.ImageUrl,
+		arg.DisplayOrder,
+		arg.Badge,
+		arg.CompareAtPrice,
+		arg.Subtitle,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Type,
+		&i.Status,
+		&i.ImageUrl,
+		&i.DisplayOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Badge,
+		&i.CompareAtPrice,
+		&i.Subtitle,
+	)
+	return i, err
+}
+
+const deleteProduct = `-- name: DeleteProduct :exec
+UPDATE products
+SET status = 'hidden', updated_at = now()
+WHERE id = $1
+`
+
+// Xóa MỀM: đặt status='hidden'. An toàn hơn xóa cứng vì order_items tham chiếu
+// product_id (giữ toàn vẹn lịch sử đơn hàng) (REQ-PROD-002).
+func (q *Queries) DeleteProduct(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteProduct, id)
+	return err
+}
+
 const getAdminUserByEmail = `-- name: GetAdminUserByEmail :one
 SELECT id, email, password_hash, name, role, created_at
 FROM admin_users
@@ -361,6 +430,77 @@ func (q *Queries) GetOrder(ctx context.Context, id pgtype.UUID) (Order, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getProductByID = `-- name: GetProductByID :one
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+FROM products
+WHERE id = $1
+`
+
+func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (Product, error) {
+	row := q.db.QueryRow(ctx, getProductByID, id)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Type,
+		&i.Status,
+		&i.ImageUrl,
+		&i.DisplayOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Badge,
+		&i.CompareAtPrice,
+		&i.Subtitle,
+	)
+	return i, err
+}
+
+const listAllProducts = `-- name: ListAllProducts :many
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+FROM products
+ORDER BY display_order, created_at, id
+`
+
+// Sản phẩm cho admin: GỒM cả status='hidden'. Thứ tự TẤT ĐỊNH (display_order,
+// created_at, id) để list ổn định giữa các lần gọi (REQ-PROD-002).
+func (q *Queries) ListAllProducts(ctx context.Context) ([]Product, error) {
+	rows, err := q.db.Query(ctx, listAllProducts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.Type,
+			&i.Status,
+			&i.ImageUrl,
+			&i.DisplayOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Badge,
+			&i.CompareAtPrice,
+			&i.Subtitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCustomers = `-- name: ListCustomers :many
@@ -721,4 +861,81 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateProduct = `-- name: UpdateProduct :one
+UPDATE products
+SET slug = $2, name = $3, description = $4, price = $5, type = $6, status = $7,
+    image_url = $8, display_order = $9, badge = $10, compare_at_price = $11,
+    subtitle = $12, updated_at = now()
+WHERE id = $1
+RETURNING id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
+`
+
+type UpdateProductParams struct {
+	ID             pgtype.UUID `json:"id"`
+	Slug           string      `json:"slug"`
+	Name           string      `json:"name"`
+	Description    *string     `json:"description"`
+	Price          int64       `json:"price"`
+	Type           string      `json:"type"`
+	Status         string      `json:"status"`
+	ImageUrl       *string     `json:"image_url"`
+	DisplayOrder   int32       `json:"display_order"`
+	Badge          *string     `json:"badge"`
+	CompareAtPrice *int64      `json:"compare_at_price"`
+	Subtitle       *string     `json:"subtitle"`
+}
+
+// Cập nhật toàn bộ thuộc tính sản phẩm theo id (REQ-PROD-002).
+func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
+	row := q.db.QueryRow(ctx, updateProduct,
+		arg.ID,
+		arg.Slug,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Type,
+		arg.Status,
+		arg.ImageUrl,
+		arg.DisplayOrder,
+		arg.Badge,
+		arg.CompareAtPrice,
+		arg.Subtitle,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Type,
+		&i.Status,
+		&i.ImageUrl,
+		&i.DisplayOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Badge,
+		&i.CompareAtPrice,
+		&i.Subtitle,
+	)
+	return i, err
+}
+
+const updateProductImage = `-- name: UpdateProductImage :exec
+UPDATE products
+SET image_url = $2, updated_at = now()
+WHERE id = $1
+`
+
+type UpdateProductImageParams struct {
+	ID       pgtype.UUID `json:"id"`
+	ImageUrl *string     `json:"image_url"`
+}
+
+// Cập nhật ảnh sản phẩm sau khi upload thành công (REQ-PROD-003).
+func (q *Queries) UpdateProductImage(ctx context.Context, arg UpdateProductImageParams) error {
+	_, err := q.db.Exec(ctx, updateProductImage, arg.ID, arg.ImageUrl)
+	return err
 }

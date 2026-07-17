@@ -230,7 +230,7 @@ func TestGetAdminMe(t *testing.T) {
 // cookie) và KHÔNG gác /auth/login, /healthz, /products. Không cần DB: request bị
 // chặn ở middleware trước khi chạm handler.
 func TestAdminRouteGuarded(t *testing.T) {
-	router := newRouter(nil, nil, []byte(testSecret), false)
+	router := newRouter(nil, nil, []byte(testSecret), false, t.TempDir())
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/me", nil))

@@ -17,6 +17,9 @@ type Config struct {
 	// AppEnv là môi trường chạy ("production" | "development" | ...). Quyết định
 	// cờ Secure của cookie phiên admin (Secure=true ở production).
 	AppEnv string
+	// UploadsDir là thư mục lưu ảnh sản phẩm upload (REQ-PROD-003). Mặc định
+	// "./uploads". Production mount volume vào đường dẫn này (nằm trong backup).
+	UploadsDir string
 }
 
 // IsProduction cho biết có đang chạy ở môi trường production hay không (AppEnv
@@ -73,6 +76,11 @@ func Load() (*Config, error) {
 		tgAPIBase = defaultTelegramAPIBase
 	}
 
+	uploadsDir := os.Getenv("UPLOADS_DIR")
+	if uploadsDir == "" {
+		uploadsDir = "./uploads"
+	}
+
 	return &Config{
 		DatabaseURL:      dbURL,
 		JWTSecret:        os.Getenv("JWT_SECRET"),
@@ -81,5 +89,6 @@ func Load() (*Config, error) {
 		TelegramAPIBase:  tgAPIBase,
 		Port:             port,
 		AppEnv:           os.Getenv("APP_ENV"),
+		UploadsDir:       uploadsDir,
 	}, nil
 }
