@@ -291,6 +291,27 @@ func (q *Queries) GetAdminUserByEmail(ctx context.Context, email string) (AdminU
 	return i, err
 }
 
+const getAdminUserByID = `-- name: GetAdminUserByID :one
+SELECT id, email, password_hash, name, role, created_at
+FROM admin_users
+WHERE id = $1
+`
+
+// Lấy admin theo id (dùng cho GET /admin/me sau khi middleware xác thực JWT).
+func (q *Queries) GetAdminUserByID(ctx context.Context, id pgtype.UUID) (AdminUser, error) {
+	row := q.db.QueryRow(ctx, getAdminUserByID, id)
+	var i AdminUser
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Role,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCustomer = `-- name: GetCustomer :one
 SELECT id, name, phone, email, company, address, type, note, created_at, updated_at
 FROM customers

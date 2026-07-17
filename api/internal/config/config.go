@@ -14,6 +14,15 @@ type Config struct {
 	TelegramChatID   string
 	TelegramAPIBase  string
 	Port             string
+	// AppEnv là môi trường chạy ("production" | "development" | ...). Quyết định
+	// cờ Secure của cookie phiên admin (Secure=true ở production).
+	AppEnv string
+}
+
+// IsProduction cho biết có đang chạy ở môi trường production hay không (AppEnv
+// == "production"). Dùng để bật cờ Secure trên cookie auth.
+func (c *Config) IsProduction() bool {
+	return c.AppEnv == "production"
 }
 
 // defaultTelegramAPIBase là host Telegram Bot API mặc định. Override qua
@@ -45,5 +54,6 @@ func Load() (*Config, error) {
 		TelegramChatID:   os.Getenv("TELEGRAM_CHAT_ID"),
 		TelegramAPIBase:  tgAPIBase,
 		Port:             port,
+		AppEnv:           os.Getenv("APP_ENV"),
 	}, nil
 }

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/moonie/api/internal/api"
+	"github.com/moonie/api/internal/auth"
 	"github.com/moonie/api/internal/config"
 	"github.com/moonie/api/internal/db"
 	"github.com/moonie/api/internal/httpx"
@@ -35,7 +37,12 @@ type Server struct {
 	pool     *pgxpool.Pool
 	products productLister
 	leads    leadCreator
+	auth     adminStore
 	notifier notify.Notifier
+	// jwtSecret là khoá HMAC ký/kiểm JWT phiên admin (từ env JWT_SECRET).
+	jwtSecret []byte
+	// secureCookie bật cờ Secure trên cookie phiên (true ở production).
+	secureCookie bool
 }
 
 // GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
@@ -55,6 +62,11 @@ func run() error {
 		return err
 	}
 
+	// JWT_SECRET bắt buộc: thiếu thì không thể ký/kiểm phiên admin an toàn (NFR-005).
+	if cfg.JWTSecret == "" {
+		return errors.New("thiếu biến môi trường JWT_SECRET")
+	}
+
 	// Bắt tín hiệu dừng để graceful shutdown; ctx này sống suốt vòng đời server.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -70,7 +82,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           newRouter(pool, newNotifier(cfg)),
+		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction()),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -101,7 +113,7 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(pool *pgxpool.Pool, notifier notify.Notifier) http.Handler {
+func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -119,14 +131,38 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier) http.Handler {
 	// /healthz, /products (REQ-LEAD-001). Ngưỡng: leadsRateLimit req/phút/IP.
 	r.Use(rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter()))
 
+	// Auth: bảo vệ CHỈ nhóm /api/v1/admin/* bằng middleware JWT cookie. Các route
+	// /auth/login, /auth/logout, /products, /leads, /healthz KHÔNG qua middleware
+	// (REQ-AUTH-002). oapi mount mọi route trên cùng router nên ta gác theo prefix.
+	r.Use(authPathPrefix(adminPathPrefix, auth.Middleware(jwtSecret)))
+
 	// Mọi route đi qua handler sinh từ spec (HandlerFromMuxWithBaseURL) để lệch
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
 	q := store.New(pool)
-	srv := &Server{pool: pool, products: q, leads: q, notifier: notifier}
+	srv := &Server{pool: pool, products: q, leads: q, auth: q, notifier: notifier, jwtSecret: jwtSecret, secureCookie: secureCookie}
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r
+}
+
+// adminPathPrefix là tiền tố URL của mọi route admin cần auth (REQ-AUTH-002).
+const adminPathPrefix = "/api/v1/admin"
+
+// authPathPrefix áp middleware mw CHỈ khi path bắt đầu bằng prefix; route khác đi
+// thẳng. Cho phép bảo vệ nhóm /admin/* mà không đụng route public — mw tự trả 401
+// và KHÔNG gọi next khi token thiếu/sai.
+func authPathPrefix(prefix string, mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		guarded := mw(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, prefix) {
+				guarded.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // newNotifier chọn notifier theo env: có TELEGRAM_BOT_TOKEN → TelegramNotifier;

@@ -10,7 +10,7 @@ import (
 )
 
 func TestRouter(t *testing.T) {
-	handler := newRouter(nil, notify.NoopNotifier{})
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false)
 
 	tests := []struct {
 		name       string

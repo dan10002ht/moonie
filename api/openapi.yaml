@@ -70,6 +70,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /auth/login:
+    post:
+      operationId: login
+      summary: Đăng nhập admin
+      description: >-
+        Xác thực admin bằng email + password (bcrypt). Đúng → đặt JWT trong cookie
+        httpOnly `mc_admin` (SameSite=Lax, Secure ở production) và trả {ok:true}.
+        Sai email HOẶC sai mật khẩu → 401 với cùng một thông điệp (chống dò tài
+        khoản). KHÔNG có đăng ký public (REQ-AUTH-001/002/003).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Đăng nhập thành công (kèm Set-Cookie mc_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+        "400":
+          description: Dữ liệu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Email hoặc mật khẩu không đúng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Đăng xuất admin
+      description: Xóa cookie phiên `mc_admin` (Max-Age=-1). Luôn trả 200.
+      responses:
+        "200":
+          description: Đã đăng xuất
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+  /admin/me:
+    get:
+      operationId: getAdminMe
+      summary: Thông tin admin đang đăng nhập
+      description: >-
+        Trả admin tương ứng phiên hiện tại (đọc từ JWT qua middleware auth). Dùng
+        để web biết đã đăng nhập. Thiếu/sai cookie → 401 (REQ-AUTH-002).
+      responses:
+        "200":
+          description: Thông tin admin hiện tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMe"
+        "401":
+          description: Chưa đăng nhập hoặc phiên không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Product:
@@ -162,6 +228,40 @@ components:
         status:
           type: string
           example: ok
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          description: Email admin
+        password:
+          type: string
+          description: Mật khẩu (không log, không lưu plaintext)
+    LoginResult:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          example: true
+    AdminMe:
+      type: object
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
     Error:
       type: object
       required:

@@ -8,6 +8,12 @@ SELECT id, email, password_hash, name, role, created_at
 FROM admin_users
 WHERE email = $1;
 
+-- name: GetAdminUserByID :one
+-- Lấy admin theo id (dùng cho GET /admin/me sau khi middleware xác thực JWT).
+SELECT id, email, password_hash, name, role, created_at
+FROM admin_users
+WHERE id = $1;
+
 -- name: ListVisibleProducts :many
 -- Sản phẩm public: ẩn status='hidden', sắp theo thứ tự hiển thị rồi thời gian tạo
 -- (REQ-PROD-001).
