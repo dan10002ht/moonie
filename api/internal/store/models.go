@@ -17,6 +17,17 @@ type AdminUser struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type Lead struct {
+	ID              pgtype.UUID        `json:"id"`
+	Name            string             `json:"name"`
+	Phone           string             `json:"phone"`
+	Message         *string            `json:"message"`
+	ProductInterest *string            `json:"product_interest"`
+	Source          string             `json:"source"`
+	Status          string             `json:"status"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type Product struct {
 	ID           pgtype.UUID        `json:"id"`
 	Slug         string             `json:"slug"`

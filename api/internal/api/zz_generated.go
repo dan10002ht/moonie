@@ -24,9 +24,34 @@ const (
 	SingleCake ProductType = "single_cake"
 )
 
+// Error defines model for Error.
+type Error struct {
+	Error string `json:"error"`
+}
+
 // Health defines model for Health.
 type Health struct {
 	Status string `json:"status"`
+}
+
+// LeadCreated defines model for LeadCreated.
+type LeadCreated struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+// LeadInput defines model for LeadInput.
+type LeadInput struct {
+	// Message Lời nhắn
+	Message *string `json:"message"`
+
+	// Name Tên khách hàng (bắt buộc)
+	Name string `json:"name"`
+
+	// Phone Số điện thoại Việt Nam (bắt buộc)
+	Phone string `json:"phone"`
+
+	// ProductInterest Sản phẩm khách quan tâm
+	ProductInterest *string `json:"product_interest"`
 }
 
 // Product defines model for Product.
@@ -50,11 +75,17 @@ type ProductStatus string
 // ProductType defines model for Product.Type.
 type ProductType string
 
+// CreateLeadJSONRequestBody defines body for CreateLead for application/json ContentType.
+type CreateLeadJSONRequestBody = LeadInput
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Health check
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
+	// Tạo lead từ form liên hệ
+	// (POST /leads)
+	CreateLead(w http.ResponseWriter, r *http.Request)
 	// Danh sách sản phẩm public
 	// (GET /products)
 	ListProducts(w http.ResponseWriter, r *http.Request)
@@ -67,6 +98,12 @@ type Unimplemented struct{}
 // Health check
 // (GET /healthz)
 func (_ Unimplemented) GetHealthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tạo lead từ form liên hệ
+// (POST /leads)
+func (_ Unimplemented) CreateLead(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -90,6 +127,20 @@ func (siw *ServerInterfaceWrapper) GetHealthz(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealthz(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLead operation middleware
+func (siw *ServerInterfaceWrapper) CreateLead(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLead(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -228,6 +279,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealthz)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/leads", wrapper.CreateLead)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/products", wrapper.ListProducts)

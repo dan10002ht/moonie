@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/moonie/api/internal/api"
@@ -31,6 +33,7 @@ var _ api.ServerInterface = (*Server)(nil)
 type Server struct {
 	pool     *pgxpool.Pool
 	products productLister
+	leads    leadCreator
 }
 
 // GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
@@ -110,11 +113,63 @@ func newRouter(pool *pgxpool.Pool) http.Handler {
 		httpx.WriteError(w, http.StatusMethodNotAllowed, "phương thức không được hỗ trợ")
 	})
 
+	// Rate limit CHỈ cho POST /api/v1/leads (chống spam form) — không đụng
+	// /healthz, /products (REQ-LEAD-001). Ngưỡng: leadsRateLimit req/phút/IP.
+	r.Use(rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter()))
+
 	// Mọi route đi qua handler sinh từ spec (HandlerFromMuxWithBaseURL) để lệch
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
-	srv := &Server{pool: pool, products: store.New(pool)}
+	q := store.New(pool)
+	srv := &Server{pool: pool, products: q, leads: q}
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r
+}
+
+// leadsRateLimit là ngưỡng rate limit cho POST /leads: số request tối đa mỗi IP
+// trong mỗi cửa sổ leadsRateWindow.
+const (
+	leadsRateLimit  = 5
+	leadsRateWindow = time.Minute
+)
+
+// newLeadsRateLimiter tạo middleware httprate giới hạn theo IP, trả 429 JSON
+// {error} khi vượt ngưỡng (NFR-006).
+func newLeadsRateLimiter() func(http.Handler) http.Handler {
+	return httprate.LimitBy(
+		leadsRateLimit,
+		leadsRateWindow,
+		keyByRemoteIP,
+		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
+			httpx.WriteError(w, http.StatusTooManyRequests, "bạn gửi quá nhiều yêu cầu, vui lòng thử lại sau ít phút")
+		}),
+	)
+}
+
+// keyByRemoteIP khoá rate limit theo IP peer TCP (r.RemoteAddr) — không giả mạo
+// được qua header. Hợp mô hình 1 VPS hiện tại; khi đặt sau reverse proxy (Caddy)
+// ở production cần chuyển sang IP giải mã bởi middleware.ClientIPFrom* (deploy).
+func keyByRemoteIP(r *http.Request) (string, error) {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		ip = r.RemoteAddr
+	}
+	return httprate.CanonicalizeIP(ip), nil
+}
+
+// rateLimitPath áp middleware mw CHỈ khi request khớp method + path chỉ định; các
+// route khác đi thẳng. Cho phép rate limit riêng POST /leads mà không ảnh hưởng
+// /healthz hay /products.
+func rateLimitPath(method, path string, mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		limited := mw(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == method && r.URL.Path == path {
+				limited.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

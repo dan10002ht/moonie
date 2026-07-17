@@ -37,6 +37,39 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Product"
+  /leads:
+    post:
+      operationId: createLead
+      summary: Tạo lead từ form liên hệ
+      description: >-
+        Nhận dữ liệu form liên hệ public, validate (tên, SĐT Việt Nam, độ dài) và
+        lưu lead trạng thái 'new'. Có rate limit theo IP để chống spam
+        (REQ-LEAD-001/002/003, NFR-004).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Lead đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadCreated"
+        "400":
+          description: Dữ liệu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Gửi quá nhiều yêu cầu (rate limit)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Product:
@@ -80,6 +113,34 @@ components:
           nullable: true
         display_order:
           type: integer
+    LeadInput:
+      type: object
+      required:
+        - name
+        - phone
+      properties:
+        name:
+          type: string
+          description: Tên khách hàng (bắt buộc)
+        phone:
+          type: string
+          description: Số điện thoại Việt Nam (bắt buộc)
+        message:
+          type: string
+          nullable: true
+          description: Lời nhắn
+        product_interest:
+          type: string
+          nullable: true
+          description: Sản phẩm khách quan tâm
+    LeadCreated:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
     Health:
       type: object
       required:

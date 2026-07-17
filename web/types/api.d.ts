@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tạo lead từ form liên hệ
+         * @description Nhận dữ liệu form liên hệ public, validate (tên, SĐT Việt Nam, độ dài) và lưu lead trạng thái 'new'. Có rate limit theo IP để chống spam (REQ-LEAD-001/002/003, NFR-004).
+         */
+        post: operations["createLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -65,6 +85,20 @@ export interface components {
             status: "available" | "sold_out" | "hidden";
             image_url?: string | null;
             display_order: number;
+        };
+        LeadInput: {
+            /** @description Tên khách hàng (bắt buộc) */
+            name: string;
+            /** @description Số điện thoại Việt Nam (bắt buộc) */
+            phone: string;
+            /** @description Lời nhắn */
+            message?: string | null;
+            /** @description Sản phẩm khách quan tâm */
+            product_interest?: string | null;
+        };
+        LeadCreated: {
+            /** Format: uuid */
+            id: string;
         };
         Health: {
             /** @example ok */
@@ -118,6 +152,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Product"][];
+                };
+            };
+        };
+    };
+    createLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadInput"];
+            };
+        };
+        responses: {
+            /** @description Lead đã được tạo */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadCreated"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Gửi quá nhiều yêu cầu (rate limit) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };

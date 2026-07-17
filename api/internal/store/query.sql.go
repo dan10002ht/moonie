@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAdminUser = `-- name: CreateAdminUser :one
@@ -38,6 +40,38 @@ func (q *Queries) CreateAdminUser(ctx context.Context, arg CreateAdminUserParams
 		&i.Role,
 		&i.CreatedAt,
 	)
+	return i, err
+}
+
+const createLead = `-- name: CreateLead :one
+INSERT INTO leads (name, phone, message, product_interest)
+VALUES ($1, $2, $3, $4)
+RETURNING id, status
+`
+
+type CreateLeadParams struct {
+	Name            string  `json:"name"`
+	Phone           string  `json:"phone"`
+	Message         *string `json:"message"`
+	ProductInterest *string `json:"product_interest"`
+}
+
+type CreateLeadRow struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+// Tạo lead mới từ form liên hệ public. source mặc định 'website', status mặc định
+// 'new' (REQ-LEAD-002/003). Trả id + status để handler xác nhận.
+func (q *Queries) CreateLead(ctx context.Context, arg CreateLeadParams) (CreateLeadRow, error) {
+	row := q.db.QueryRow(ctx, createLead,
+		arg.Name,
+		arg.Phone,
+		arg.Message,
+		arg.ProductInterest,
+	)
+	var i CreateLeadRow
+	err := row.Scan(&i.ID, &i.Status)
 	return i, err
 }
 
