@@ -1,9 +1,9 @@
 # 03 — FRS: Functional Requirements Specification — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
+> **Cập nhật:** 2026-07-18 · **Commit nguồn:** `525f222`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
-> Nguồn: spec `2026-07-17-mooni-website-design.md`, `design/mooni-landing.html`, `design/mooni-design-system.html`, `CLAUDE.md`.
-> ⚠️ Dự án chưa có code (`api/`, `web/` chưa tồn tại). Mọi luồng dưới đây phái sinh từ spec đã duyệt; khi có `api/openapi.yaml` + migrations, tài liệu sẽ đối chiếu lại. Các quyết định đã chốt 2026-07-17: xem 02-SRS.md mục đầu. Mọi endpoint (kể cả auth/admin) đều dưới tiền tố `/api/v1` (spec §4).
+> Nguồn: spec `2026-07-17-mooni-website-design.md`, `design/mooni-landing.html`, `design/mooni-design-system.html`, `api/openapi.yaml`, `api/migrations/`, code (`api/`, `web/`), `CLAUDE.md`.
+> Các quyết định đã chốt 2026-07-17: xem 02-SRS.md mục đầu. Mọi endpoint (kể cả auth/admin) đều dưới tiền tố `/api/v1` (spec §4). GĐ1–5 (functional) đã hoàn tất; GĐ6 (deploy hardening) hoàn thành & verify local, deploy VPS thật chờ tài nguyên chủ dự án.
 
 ## 1. Module Landing (REQ-LAND-001..004)
 
@@ -95,6 +95,9 @@ new → confirmed → delivering → done
 
 - Không có đăng ký public. Tài khoản admin tạo bằng CLI seed (spec §6).
 - Lỗi auth trả JSON `{error}` đúng status, không leak internal (spec §4).
+- **Deploy-gate (NFR-016):** khi `APP_ENV=production`, seed từ chối mật khẩu mặc định `mooni-admin` hoặc <12 ký tự — bắt buộc `SEED_ADMIN_PASSWORD` mạnh (dev vẫn cho default).
+- **Chống brute-force (NFR-013):** `POST /auth/login` rate-limit 10/phút/IP (theo IP client thật — xem §9.1).
+- **CSRF (NFR-015):** cookie `SameSite=Lax` + `Secure` ở production; middleware `originCheck` chặn 403 request GHI có `Origin` lạ trên `/admin/*` + `/auth/login|logout`.
 
 ## 7. Module Notify (REQ-NOTI-001..002)
 
@@ -108,3 +111,32 @@ new → confirmed → delivering → done
 
 - `GET /admin/dashboard` trả 3 chỉ số: số leads mới, số đơn đang xử lý, doanh thu tháng. Doanh thu tháng = tổng đơn trạng thái `done` trong tháng (tiền thực đã về); có thể hiển thị dòng phụ "đang xử lý" để tham khảo (chốt 2026-07-17, spec §1).
 - Admin UI dùng shadcn/ui nhưng theo tokens Mooni — không giữ theme mặc định đen trắng (spec §5).
+
+## 9. Bảo mật & Vận hành production (GĐ6 — NFR-002/003/012..016)
+
+Thực thi ở giai đoạn deploy hardening; hoàn thành & verify local, deploy VPS thật chờ tài nguyên chủ dự án.
+
+### 9.1 Rate-limit theo IP client thật sau reverse proxy (NFR-012, bổ trợ NFR-004)
+
+- Topology production: khách → Caddy (`Caddyfile`, same-origin: `/api`,`/uploads`→`api:8080`, còn lại→`web:3000`) → Go API. `r.RemoteAddr` khi đó là IP proxy, không phải khách.
+- `ClientIPResolver` (`api/internal/httpx/clientip.go`): chỉ tin `X-Forwarded-For` khi peer TCP nằm trong `TRUSTED_PROXIES` (CSV IP/CIDR, fail-fast lúc boot) → lấy rightmost-non-trusted; peer không tin cậy → dùng `RemoteAddr`, bỏ qua XFF (chống spoof). Cả 2 rate limiter (leads 20/phút, login 10/phút) dùng chung resolver.
+- Next forward XFF cho `/leads` + `/auth/login` (`web/lib/client-ip.ts`, `web/lib/api.ts`, `web/app/actions/{lead,admin}.ts`).
+- **Footgun vận hành:** production BẮT BUỘC set `TRUSTED_PROXIES` = dải Caddy/Next thật (compose.prod dùng `172.28.0.0/16`); để trống ở prod → toàn site rate-limit theo IP proxy (ghi trong `docs/runbook.md`).
+
+### 9.2 Header bảo mật (NFR-014)
+
+- API middleware toàn cục `securityHeaders`: `nosniff` + `X-Frame-Options: DENY` + `Referrer-Policy: no-referrer` cho MỌI response; `/uploads/*` thêm `Cross-Origin-Resource-Policy: same-site`.
+- Web `next.config.ts`: CSP + `frame-ancestors none` + nosniff + Referrer-Policy (prod không `unsafe-eval`/`ws`; note hardening dưới ngưỡng: `script-src 'unsafe-inline'` chưa nonce → backlog).
+- HSTS set tại Caddy (NFR-002), không set ở app (tránh header nhân đôi).
+
+### 9.3 CSRF Origin-check (NFR-015)
+
+- `originCheck(ALLOWED_ORIGIN)`: request GHI (POST/PUT/PATCH/DELETE) trên `/api/v1/admin/*` + `/auth/login|logout` có `Origin` lạ → 403. `ALLOWED_ORIGIN` set → allowlist khớp chính xác scheme://host[:port]; rỗng → fallback same-origin theo Host. `Origin` vắng → qua (server-to-server; SameSite là lớp 1). Prefix so theo segment (`/api/v1/adminx` không khớp nhầm).
+- Cookie `Secure` bật ở production qua `IsProduction()` (case-fold + trim).
+
+### 9.4 Hạ tầng deploy & sao lưu (NFR-002/003/008)
+
+- `docker-compose.prod.yml`: postgres nội bộ + migrate/seed one-shot (`api/Dockerfile.migrate`) + api + web + caddy; env fail-fast (`${VAR:?}`); chỉ Caddy expose 80/443.
+- Backup/restore: `scripts/backup.sh`+`restore.sh` (`pg_dump`/`pg_restore -Fc` qua docker exec + rotation) — round-trip đã test thật.
+- `docs/runbook.md`: deploy/rollback/restore/xem log + checklist go-live + 2 mốc security-review bắt buộc.
+- Env production bổ sung: `DOMAIN`, `ACME_EMAIL`, `SEED_ADMIN_PASSWORD`, `TRUSTED_PROXIES`, `ALLOWED_ORIGIN`, `APP_ENV=production` (xem `.env.example` mục PRODUCTION).

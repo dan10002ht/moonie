@@ -1,7 +1,8 @@
 # 04 — Data Dictionary — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `67435fb`
+> **Cập nhật:** 2026-07-18 · **Commit nguồn:** `525f222`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
+> ℹ️ **GĐ6 (Deploy hardening) KHÔNG thêm migration** — schema DB giữ nguyên tới `0007`. Các thay đổi GĐ6 (rate-limit real IP, security headers, CSRF, seed guard, HSTS/HTTPS) là tầng ứng dụng/hạ tầng/cấu hình env (`TRUSTED_PROXIES`, `ALLOWED_ORIGIN`, `DOMAIN`, `ACME_EMAIL`, `SEED_ADMIN_PASSWORD`, `APP_ENV`), không phải cột DB — xem 02-SRS NFR-012..016 + 03-FRS §9.
 > ✅ **GĐ4 (Admin API) đã xong 7/7.** TẤT CẢ 6 bảng spec giờ đã có migration đối chiếu code thật — KHÔNG còn bảng nào "chờ migration". `0001_init` (`admin_users`, §6), `0002_products` + `0004_product_badge` + `0005_product_compare_subtitle` (`products`, §1), `0003_leads` (`leads`, §2), **`0006_customers` (`customers`, §3), `0007_orders` (`orders` §4 + `order_items` §5 + cột `leads.order_id`)**. Cột/kiểu/ràng buộc dưới đây lấy trực tiếp từ migration, không còn suy diễn từ spec.
 
 > **Ghi nhận thực tại GĐ1** (không sửa yêu cầu nghiệp vụ, chỉ ghi để chủ dự án nắm):
