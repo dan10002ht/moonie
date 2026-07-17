@@ -2,7 +2,12 @@ import type { Product } from "@/lib/api";
 import { getProducts } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { ChatIcon } from "./icons";
-import { MarketingBadge, StatusPill } from "./product-card";
+import {
+  ComparePrice,
+  MarketingBadge,
+  StatusPill,
+  Subtitle,
+} from "./product-card";
 
 /**
  * Collection — "Hộp bánh đặc tuyển" (§ COLLECTION mockup).
@@ -63,6 +68,7 @@ export async function Collection() {
                     <StatusPill status={box.status} />
                   </div>
                   <div className="flex flex-1 flex-col p-6">
+                    <Subtitle text={box.subtitle} tone="gift" />
                     <div className="mb-2 font-serif text-[23px] font-bold leading-[1.2] text-navy">
                       {box.name}
                     </div>
@@ -75,6 +81,10 @@ export async function Collection() {
                       <span className="whitespace-nowrap font-serif text-[24px] font-semibold tabular-nums lining-nums text-steel">
                         {formatVND(box.price)}
                       </span>
+                      <ComparePrice
+                        price={box.price}
+                        compareAtPrice={box.compare_at_price}
+                      />
                     </div>
                     <button
                       type="button"

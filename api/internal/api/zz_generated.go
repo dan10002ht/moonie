@@ -57,18 +57,24 @@ type LeadInput struct {
 // Product defines model for Product.
 type Product struct {
 	// Badge Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có
-	Badge        *string            `json:"badge"`
-	Description  *string            `json:"description"`
-	DisplayOrder int                `json:"display_order"`
-	Id           openapi_types.UUID `json:"id"`
-	ImageUrl     *string            `json:"image_url"`
-	Name         string             `json:"name"`
+	Badge *string `json:"badge"`
+
+	// CompareAtPrice Giá gốc để so sánh (VND). Nếu > price → hiện giá gạch + % giảm. Null nếu không khuyến mãi.
+	CompareAtPrice *int64             `json:"compare_at_price"`
+	Description    *string            `json:"description"`
+	DisplayOrder   int                `json:"display_order"`
+	Id             openapi_types.UUID `json:"id"`
+	ImageUrl       *string            `json:"image_url"`
+	Name           string             `json:"name"`
 
 	// Price Giá VND, số nguyên
 	Price  int64         `json:"price"`
 	Slug   string        `json:"slug"`
 	Status ProductStatus `json:"status"`
-	Type   ProductType   `json:"type"`
+
+	// Subtitle Nhãn phân loại nhỏ in hoa trên tên (vd "Hộp thiếc cao cấp"), null nếu không có
+	Subtitle *string     `json:"subtitle"`
+	Type     ProductType `json:"type"`
 }
 
 // ProductStatus defines model for Product.Status.

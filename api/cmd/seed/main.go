@@ -40,14 +40,18 @@ const (
 // không hiển thị. imageURL để rỗng (mockup dùng placeholder, ảnh thật thêm sau qua admin).
 // badge là nhãn marketing ("Bán chạy" / "Mới") — rỗng nghĩa là không có (lưu NULL).
 type seedProduct struct {
-	slug         string
-	name         string
-	description  string
-	price        int64
-	productType  string
-	status       string
-	badge        string
-	displayOrder int
+	slug        string
+	name        string
+	description string
+	price       int64
+	productType string
+	status      string
+	badge       string
+	// subtitle: nhãn phân loại IN HOA trên tên (mockup). Rỗng = NULL.
+	subtitle string
+	// compareAtPrice: giá gốc để hiện giá gạch + % giảm. 0 = NULL (không KM).
+	compareAtPrice int64
+	displayOrder   int
 }
 
 // seedProducts: 3 gift_box + 4 single_cake, tên + mô tả + badge lấy nguyên văn từ mockup
@@ -55,14 +59,16 @@ type seedProduct struct {
 // Mockup KHÔNG có bánh lẻ nào "hết hàng" → tất cả single_cake status available.
 var seedProducts = []seedProduct{
 	{
-		slug:         "nguyet-quang-kim",
-		name:         "Nguyệt Quang Kim",
-		description:  "Hộp 6 bánh · Sen nhuyễn trứng muối, trà xanh, thập cẩm gà quay",
-		price:        890000,
-		productType:  "gift_box",
-		status:       "available",
-		badge:        "",
-		displayOrder: 1,
+		slug:           "nguyet-quang-kim",
+		name:           "Nguyệt Quang Kim",
+		description:    "Hộp 6 bánh · Sen nhuyễn trứng muối, trà xanh, thập cẩm gà quay",
+		price:          890000,
+		productType:    "gift_box",
+		status:         "available",
+		badge:          "Bán chạy",          // mockup card 1 badge trái
+		subtitle:       "Hộp thiếc cao cấp", // mockup kicker trên tên
+		compareAtPrice: 1050000,             // mockup: giá gạch 1.050.000đ → -15%
+		displayOrder:   1,
 	},
 	{
 		slug:         "vong-nguyet",
@@ -71,7 +77,8 @@ var seedProducts = []seedProduct{
 		price:        620000,
 		productType:  "gift_box",
 		status:       "available",
-		badge:        "",
+		badge:        "Mới",                // mockup card 2 badge trái
+		subtitle:     "Hộp giấy đặc tuyển", // mockup kicker
 		displayOrder: 2,
 	},
 	{
@@ -81,7 +88,8 @@ var seedProducts = []seedProduct{
 		price:        360000,
 		productType:  "gift_box",
 		status:       "available",
-		badge:        "",
+		badge:        "Quà biếu", // mockup card 3 badge trái
+		subtitle:     "Hộp mini", // mockup kicker
 		displayOrder: 3,
 	},
 	{
@@ -92,6 +100,7 @@ var seedProducts = []seedProduct{
 		productType:  "single_cake",
 		status:       "available",
 		badge:        "Bán chạy",
+		subtitle:     "Bánh nướng · 180g", // mockup kicker flavor
 		displayOrder: 4,
 	},
 	{
@@ -102,6 +111,7 @@ var seedProducts = []seedProduct{
 		productType:  "single_cake",
 		status:       "available",
 		badge:        "",
+		subtitle:     "Bánh dẻo · 150g",
 		displayOrder: 5,
 	},
 	{
@@ -112,6 +122,7 @@ var seedProducts = []seedProduct{
 		productType:  "single_cake",
 		status:       "available",
 		badge:        "Mới",
+		subtitle:     "Bánh nướng · 180g",
 		displayOrder: 6,
 	},
 	{
@@ -122,6 +133,7 @@ var seedProducts = []seedProduct{
 		productType:  "single_cake",
 		status:       "available",
 		badge:        "",
+		subtitle:     "Bánh dẻo · 150g",
 		displayOrder: 7,
 	},
 }
@@ -188,19 +200,21 @@ func seedProductRows(ctx context.Context, pool *pgxpool.Pool) error {
 		// RETURNING (xmax = 0): true nếu là INSERT mới, false nếu UPDATE row có sẵn.
 		var inserted bool
 		err := pool.QueryRow(ctx,
-			`INSERT INTO products (slug, name, description, price, type, status, image_url, badge, display_order)
-			 VALUES ($1, $2, $3, $4, $5, $6, '', NULLIF($7, ''), $8)
+			`INSERT INTO products (slug, name, description, price, type, status, image_url, badge, subtitle, compare_at_price, display_order)
+			 VALUES ($1, $2, $3, $4, $5, $6, '', NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, 0), $10)
 			 ON CONFLICT (slug) DO UPDATE SET
-			     name          = EXCLUDED.name,
-			     description   = EXCLUDED.description,
-			     price         = EXCLUDED.price,
-			     type          = EXCLUDED.type,
-			     status        = EXCLUDED.status,
-			     badge         = EXCLUDED.badge,
-			     display_order = EXCLUDED.display_order,
-			     updated_at    = now()
+			     name             = EXCLUDED.name,
+			     description      = EXCLUDED.description,
+			     price            = EXCLUDED.price,
+			     type             = EXCLUDED.type,
+			     status           = EXCLUDED.status,
+			     badge            = EXCLUDED.badge,
+			     subtitle         = EXCLUDED.subtitle,
+			     compare_at_price = EXCLUDED.compare_at_price,
+			     display_order    = EXCLUDED.display_order,
+			     updated_at       = now()
 			 RETURNING (xmax = 0)`,
-			p.slug, p.name, p.description, p.price, p.productType, p.status, p.badge, p.displayOrder,
+			p.slug, p.name, p.description, p.price, p.productType, p.status, p.badge, p.subtitle, p.compareAtPrice, p.displayOrder,
 		).Scan(&inserted)
 		if err != nil {
 			return fmt.Errorf("seed product %q: %w", p.slug, err)

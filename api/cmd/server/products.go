@@ -40,15 +40,17 @@ func (s *Server) ListProducts(w http.ResponseWriter, r *http.Request) {
 // toAPIProduct map một hàng store.Product → api.Product (hợp đồng OpenAPI).
 func toAPIProduct(row store.Product) api.Product {
 	return api.Product{
-		Id:           openapi_types.UUID(row.ID.Bytes),
-		Slug:         row.Slug,
-		Name:         row.Name,
-		Description:  row.Description,
-		Price:        row.Price,
-		Type:         api.ProductType(row.Type),
-		Status:       api.ProductStatus(row.Status),
-		ImageUrl:     row.ImageUrl,
-		Badge:        row.Badge,
-		DisplayOrder: int(row.DisplayOrder),
+		Id:             openapi_types.UUID(row.ID.Bytes),
+		Slug:           row.Slug,
+		Name:           row.Name,
+		Description:    row.Description,
+		Price:          row.Price,
+		Type:           api.ProductType(row.Type),
+		Status:         api.ProductStatus(row.Status),
+		ImageUrl:       row.ImageUrl,
+		Badge:          row.Badge,
+		CompareAtPrice: row.CompareAtPrice,
+		Subtitle:       row.Subtitle,
+		DisplayOrder:   int(row.DisplayOrder),
 	}
 }

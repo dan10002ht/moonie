@@ -86,6 +86,13 @@ export interface components {
             image_url?: string | null;
             /** @description Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có */
             badge?: string | null;
+            /**
+             * Format: int64
+             * @description Giá gốc để so sánh (VND). Nếu > price → hiện giá gạch + % giảm. Null nếu không khuyến mãi.
+             */
+            compare_at_price?: number | null;
+            /** @description Nhãn phân loại nhỏ in hoa trên tên (vd "Hộp thiếc cao cấp"), null nếu không có */
+            subtitle?: string | null;
             display_order: number;
         };
         LeadInput: {

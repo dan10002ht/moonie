@@ -115,6 +115,15 @@ components:
           type: string
           nullable: true
           description: Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có
+        compare_at_price:
+          type: integer
+          format: int64
+          nullable: true
+          description: Giá gốc để so sánh (VND). Nếu > price → hiện giá gạch + % giảm. Null nếu không khuyến mãi.
+        subtitle:
+          type: string
+          nullable: true
+          description: Nhãn phân loại nhỏ in hoa trên tên (vd "Hộp thiếc cao cấp"), null nếu không có
         display_order:
           type: integer
     LeadInput:

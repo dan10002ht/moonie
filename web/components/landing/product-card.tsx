@@ -1,9 +1,68 @@
 import type { Product } from "@/lib/api";
+import { formatVND } from "@/lib/format";
 
 /**
  * Chrome dùng chung cho card sản phẩm (Collection + Flavors).
- * Data-driven: badge marketing từ field `badge`, pill trạng thái từ `status`.
+ * Data-driven: badge marketing từ field `badge`, pill trạng thái từ `status`,
+ * subtitle (nhãn loại IN HOA) + compare_at_price (giá gạch + % giảm) từ API.
  */
+
+/**
+ * % giảm giá từ compare_at_price so với price. Null nếu không có KM
+ * (compare rỗng hoặc ≤ price). Làm tròn về số nguyên như mockup.
+ */
+export function discountPercent(
+  price: number,
+  compareAtPrice?: number | null,
+): number | null {
+  if (!compareAtPrice || compareAtPrice <= price) return null;
+  return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
+}
+
+/** Nhãn phân loại IN HOA trên tên. Rỗng/null → không render. */
+export function Subtitle({
+  text,
+  tone,
+}: {
+  text?: string | null;
+  tone: "gift" | "flavor";
+}) {
+  if (!text) return null;
+  return (
+    <div
+      className={`mb-[6px] text-[11px] font-semibold uppercase tracking-[0.14em] ${
+        tone === "gift" ? "text-badge-hot" : "text-ink-faint"
+      }`}
+    >
+      {text}
+    </div>
+  );
+}
+
+/**
+ * Giá gạch (compare_at_price) + pill % giảm — hiện khi compare > price.
+ * Dùng chung cho cả gift box lẫn flavor (chỉ render khi có KM).
+ */
+export function ComparePrice({
+  price,
+  compareAtPrice,
+}: {
+  price: number;
+  compareAtPrice?: number | null;
+}) {
+  const pct = discountPercent(price, compareAtPrice);
+  if (pct === null || !compareAtPrice) return null;
+  return (
+    <>
+      <span className="text-[13px] tabular-nums lining-nums text-ink-faint line-through">
+        {formatVND(compareAtPrice)}
+      </span>
+      <span className="rounded-[4px] bg-sale px-2 py-[3px] text-[11px] font-extrabold text-white">
+        −{pct}%
+      </span>
+    </>
+  );
+}
 
 type BadgeStyle = { className: string };
 

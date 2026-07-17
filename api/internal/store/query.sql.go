@@ -96,7 +96,7 @@ func (q *Queries) GetAdminUserByEmail(ctx context.Context, email string) (AdminU
 }
 
 const listVisibleProducts = `-- name: ListVisibleProducts :many
-SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge, compare_at_price, subtitle
 FROM products
 WHERE status != 'hidden'
 ORDER BY display_order, created_at, id
@@ -126,6 +126,8 @@ func (q *Queries) ListVisibleProducts(ctx context.Context) ([]Product, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Badge,
+			&i.CompareAtPrice,
+			&i.Subtitle,
 		); err != nil {
 			return nil, err
 		}

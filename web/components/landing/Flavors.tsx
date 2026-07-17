@@ -1,23 +1,17 @@
 import type { Product } from "@/lib/api";
 import { getProducts } from "@/lib/api";
 import { formatVND } from "@/lib/format";
-import { MarketingBadge } from "./product-card";
+import { ComparePrice, MarketingBadge, Subtitle } from "./product-card";
 
 /**
- * Tách mô tả seed "Bánh nướng · 180g · Vị truyền thống, đậm đà" thành
- * kicker ("Bánh nướng · 180g") + tagline ("Vị truyền thống, đậm đà") như mockup.
+ * Tagline card = đoạn cuối của description (kicker "Bánh nướng · 180g" giờ lấy từ
+ * field subtitle, không tách nữa). vd "Bánh nướng · 180g · Vị truyền thống, đậm đà"
+ * → "Vị truyền thống, đậm đà". Giữ nguyên description ở DB, chỉ tách khi hiển thị.
  */
-function splitDescription(description?: string | null): {
-  kicker: string;
-  tagline: string;
-} {
-  if (!description) return { kicker: "", tagline: "" };
+function taglineOf(description?: string | null): string {
+  if (!description) return "";
   const parts = description.split(" · ");
-  if (parts.length <= 1) return { kicker: "", tagline: description };
-  return {
-    kicker: parts.slice(0, -1).join(" · "),
-    tagline: parts[parts.length - 1] ?? "",
-  };
+  return parts[parts.length - 1] ?? "";
 }
 
 /**
@@ -62,7 +56,7 @@ export async function Flavors() {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-5">
             {cakes.map((cake) => {
               const soldOut = cake.status === "sold_out";
-              const { kicker, tagline } = splitDescription(cake.description);
+              const tagline = taglineOf(cake.description);
               return (
                 <div
                   key={cake.id}
@@ -80,11 +74,7 @@ export async function Flavors() {
                     <MarketingBadge badge={cake.badge} size="sm" />
                   </div>
                   <div className="flex flex-1 flex-col p-5">
-                    {kicker ? (
-                      <div className="mb-[6px] text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                        {kicker}
-                      </div>
-                    ) : null}
+                    <Subtitle text={cake.subtitle} tone="flavor" />
                     <div className="mb-[6px] font-serif text-[19px] font-bold leading-[1.25] text-navy">
                       {cake.name}
                     </div>
@@ -94,8 +84,12 @@ export async function Flavors() {
                       </div>
                     ) : null}
                     <div className="mt-auto flex items-center justify-between gap-[10px]">
-                      <span className="font-serif text-[20px] font-semibold tabular-nums lining-nums text-steel">
+                      <span className="flex flex-wrap items-baseline gap-x-[6px] gap-y-1 font-serif text-[20px] font-semibold tabular-nums lining-nums text-steel">
                         {formatVND(cake.price)}
+                        <ComparePrice
+                          price={cake.price}
+                          compareAtPrice={cake.compare_at_price}
+                        />
                       </span>
                       <button
                         type="button"
