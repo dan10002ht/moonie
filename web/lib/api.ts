@@ -3,6 +3,8 @@
  * Không rải `fetch` khắp nơi; mọi route/component đi qua đây.
  */
 
+import type { components } from "@/types/api";
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080/api/v1";
 
@@ -57,4 +59,13 @@ export async function apiFetch<T>(
   }
 
   return (await response.json()) as T;
+}
+
+/**
+ * Health check của API — kiểu trả về khớp schema `Health` sinh từ OpenAPI.
+ * Đây là điểm nối contract web↔api: nếu spec đổi shape của `Health`,
+ * `tsc --noEmit` sẽ fail tại đây (contract gate compile-time).
+ */
+export function getHealth(): Promise<components["schemas"]["Health"]> {
+  return apiFetch<components["schemas"]["Health"]>("/healthz");
 }
