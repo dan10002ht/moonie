@@ -44,6 +44,7 @@ type Server struct {
 	orderAdmin    orderAdminStore
 	orderCreate   orderCreator
 	customerAdmin customerAdminStore
+	dashboard     dashboardStore
 	auth          adminStore
 	notifier     notify.Notifier
 	// jwtSecret là khoá HMAC ký/kiểm JWT phiên admin (từ env JWT_SECRET).
@@ -151,7 +152,7 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
 	q := store.New(pool)
-	srv := &Server{pool: pool, products: q, productAdmin: q, leads: q, leadAdmin: q, leadConvert: poolLeadConverter{pool: pool}, orderAdmin: q, orderCreate: poolOrderCreator{pool: pool}, customerAdmin: q, auth: q, notifier: notifier, jwtSecret: jwtSecret, secureCookie: secureCookie, uploadsDir: uploadsDir}
+	srv := &Server{pool: pool, products: q, productAdmin: q, leads: q, leadAdmin: q, leadConvert: poolLeadConverter{pool: pool}, orderAdmin: q, orderCreate: poolOrderCreator{pool: pool}, customerAdmin: q, dashboard: q, auth: q, notifier: notifier, jwtSecret: jwtSecret, secureCookie: secureCookie, uploadsDir: uploadsDir}
 
 	// Serve tĩnh ảnh sản phẩm tại GET /uploads/* — PUBLIC (không auth) để landing
 	// hiển thị ảnh. Đặt NGOÀI prefix /api/v1/admin nên middleware auth không gác.

@@ -153,6 +153,18 @@ type CustomerList struct {
 	Total int64 `json:"total"`
 }
 
+// Dashboard defines model for Dashboard.
+type Dashboard struct {
+	// NewLeads Số leads mới (status='new')
+	NewLeads int64 `json:"new_leads"`
+
+	// ProcessingOrders Số đơn đang xử lý (status ∈ {confirmed, delivering})
+	ProcessingOrders int64 `json:"processing_orders"`
+
+	// RevenueThisMonth Doanh thu tháng hiện tại — tổng total các đơn status='done' tạo trong tháng, neo múi giờ Việt Nam (Asia/Ho_Chi_Minh).
+	RevenueThisMonth int64 `json:"revenue_this_month"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Error string `json:"error"`
@@ -469,6 +481,9 @@ type ServerInterface interface {
 	// Cập nhật khách hàng
 	// (PUT /admin/customers/{id})
 	UpdateCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Tổng quan admin (dashboard)
+	// (GET /admin/dashboard)
+	GetAdminDashboard(w http.ResponseWriter, r *http.Request)
 	// Danh sách leads cho admin (phân trang)
 	// (GET /admin/leads)
 	ListAdminLeads(w http.ResponseWriter, r *http.Request, params ListAdminLeadsParams)
@@ -550,6 +565,12 @@ func (_ Unimplemented) GetAdminCustomer(w http.ResponseWriter, r *http.Request, 
 // Cập nhật khách hàng
 // (PUT /admin/customers/{id})
 func (_ Unimplemented) UpdateCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tổng quan admin (dashboard)
+// (GET /admin/dashboard)
+func (_ Unimplemented) GetAdminDashboard(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -760,6 +781,20 @@ func (siw *ServerInterfaceWrapper) UpdateCustomer(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateCustomer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminDashboard operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminDashboard(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminDashboard(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1264,6 +1299,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/admin/customers/{id}", wrapper.UpdateCustomer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/dashboard", wrapper.GetAdminDashboard)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/leads", wrapper.ListAdminLeads)

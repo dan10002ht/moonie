@@ -116,6 +116,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResult"
+  /admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      summary: Tổng quan admin (dashboard)
+      description: >-
+        Trả 3 chỉ số tổng quan: số leads mới (status='new'), số đơn đang xử lý
+        (status ∈ {confirmed, delivering}), và doanh thu tháng hiện tại (tổng total
+        các đơn status='done' tạo trong tháng, neo múi giờ Việt Nam Asia/Ho_Chi_Minh).
+        Cần auth admin (REQ-DASH-001).
+      responses:
+        "200":
+          description: 3 chỉ số tổng quan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+        "401":
+          description: Chưa đăng nhập hoặc phiên không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/me:
     get:
       operationId: getAdminMe
@@ -1289,6 +1311,27 @@ components:
         id:
           type: string
           format: uuid
+    Dashboard:
+      type: object
+      required:
+        - new_leads
+        - processing_orders
+        - revenue_this_month
+      properties:
+        new_leads:
+          type: integer
+          format: int64
+          description: Số leads mới (status='new')
+        processing_orders:
+          type: integer
+          format: int64
+          description: Số đơn đang xử lý (status ∈ {confirmed, delivering})
+        revenue_this_month:
+          type: integer
+          format: int64
+          description: >-
+            Doanh thu tháng hiện tại — tổng total các đơn status='done' tạo trong
+            tháng, neo múi giờ Việt Nam (Asia/Ho_Chi_Minh).
     Health:
       type: object
       required:
