@@ -68,7 +68,8 @@ Makefile                      # lệnh tiện: gen, migrate, test, up
 - [ ] **Step 1: Viết `.env.example`**
 
 ```
-DATABASE_URL=postgres://mooni:mooni@localhost:5432/mooni?sslmode=disable
+# Host port 5440 (5432/5433 đã bị container dev khác chiếm trên máy này)
+DATABASE_URL=postgres://mooni:mooni@localhost:5440/mooni?sslmode=disable
 JWT_SECRET=change-me-in-production
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=

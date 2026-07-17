@@ -8,8 +8,10 @@
 
 Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (mỗi task có DoD + step + trace REQ).
 
-1. [ ] Task 1 — Docker Compose + Postgres + khung env (NFR-008, NFR-005)
-2. [ ] Task 2 — Go API skeleton: config, chi router, /healthz, error helper (NFR-006, NFR-005)
+1. [✅] Task 1 — Docker Compose + Postgres + khung env (NFR-008, NFR-005)
+   - Files: docker-compose.yml (postgres:16, port 5440:5432, healthcheck pg_isready), .env.example (port 5440), Makefile (up + placeholder gen/migrate/test). Commit bfff066.
+   - Evaluator gate PASS (verify độc lập main agent): postgres healthy trên 5440, .env ignored đúng, .env.example trong git, working tree sạch.
+2. [⏳] Task 2 — Go API skeleton: config, chi router, /healthz, error helper (NFR-006, NFR-005)
 3. [ ] Task 3 — OpenAPI spec-first + oapi-codegen contract gate phía Go (SRS §5, NFR-006)
 4. [ ] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
 5. [ ] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
