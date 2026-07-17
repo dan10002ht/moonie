@@ -56,6 +56,8 @@ type LeadInput struct {
 
 // Product defines model for Product.
 type Product struct {
+	// Badge Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có
+	Badge        *string            `json:"badge"`
 	Description  *string            `json:"description"`
 	DisplayOrder int                `json:"display_order"`
 	Id           openapi_types.UUID `json:"id"`

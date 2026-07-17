@@ -11,7 +11,7 @@ WHERE email = $1;
 -- name: ListVisibleProducts :many
 -- Sản phẩm public: ẩn status='hidden', sắp theo thứ tự hiển thị rồi thời gian tạo
 -- (REQ-PROD-001).
-SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at
+SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at, badge
 FROM products
 WHERE status != 'hidden'
 ORDER BY display_order, created_at, id;

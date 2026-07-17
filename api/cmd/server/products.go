@@ -48,6 +48,7 @@ func toAPIProduct(row store.Product) api.Product {
 		Type:         api.ProductType(row.Type),
 		Status:       api.ProductStatus(row.Status),
 		ImageUrl:     row.ImageUrl,
+		Badge:        row.Badge,
 		DisplayOrder: int(row.DisplayOrder),
 	}
 }

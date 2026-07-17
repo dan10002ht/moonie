@@ -77,6 +77,7 @@ func TestToAPIProduct(t *testing.T) {
 				Type:         "single_cake",
 				Status:       "available",
 				ImageUrl:     strptr(img),
+				Badge:        strptr("Bán chạy"),
 				DisplayOrder: int32(2),
 			},
 			want: api.Product{
@@ -88,6 +89,7 @@ func TestToAPIProduct(t *testing.T) {
 				Type:         api.SingleCake,
 				Status:       api.Available,
 				ImageUrl:     strptr(img),
+				Badge:        strptr("Bán chạy"),
 				DisplayOrder: 2,
 			},
 		},
@@ -150,6 +152,10 @@ func TestToAPIProduct(t *testing.T) {
 			}
 			if !ptrEq(got.ImageUrl, tt.want.ImageUrl) {
 				t.Errorf("ImageUrl = %v, want %v", derefStr(got.ImageUrl), derefStr(tt.want.ImageUrl))
+			}
+			// Badge (nhãn marketing nullable) map đúng: nil giữ nil, có giá trị giữ nguyên.
+			if !ptrEq(got.Badge, tt.want.Badge) {
+				t.Errorf("Badge = %v, want %v", derefStr(got.Badge), derefStr(tt.want.Badge))
 			}
 		})
 	}

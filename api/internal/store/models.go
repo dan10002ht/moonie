@@ -40,4 +40,5 @@ type Product struct {
 	DisplayOrder int32              `json:"display_order"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	Badge        *string            `json:"badge"`
 }

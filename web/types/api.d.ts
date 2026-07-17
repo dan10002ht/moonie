@@ -84,6 +84,8 @@ export interface components {
             /** @enum {string} */
             status: "available" | "sold_out" | "hidden";
             image_url?: string | null;
+            /** @description Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có */
+            badge?: string | null;
             display_order: number;
         };
         LeadInput: {

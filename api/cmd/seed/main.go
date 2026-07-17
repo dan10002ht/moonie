@@ -38,6 +38,7 @@ const (
 
 // seedProduct là 1 sản phẩm mẫu. price là VND (bigint) — chỉ lưu nội bộ, landing
 // không hiển thị. imageURL để rỗng (mockup dùng placeholder, ảnh thật thêm sau qua admin).
+// badge là nhãn marketing ("Bán chạy" / "Mới") — rỗng nghĩa là không có (lưu NULL).
 type seedProduct struct {
 	slug         string
 	name         string
@@ -45,12 +46,13 @@ type seedProduct struct {
 	price        int64
 	productType  string
 	status       string
+	badge        string
 	displayOrder int
 }
 
-// seedProducts: 3 gift_box + 3 single_cake, tên + mô tả lấy nguyên văn từ mockup
-// design/mooni-landing.html (section collection + flavors). tra-xanh-hat-sen để sold_out
-// theo mockup ("hết hàng").
+// seedProducts: 3 gift_box + 4 single_cake, tên + mô tả + badge lấy nguyên văn từ mockup
+// design/mooni-landing.html (section collection dòng ~161-213 + flavors dòng ~289-350).
+// Mockup KHÔNG có bánh lẻ nào "hết hàng" → tất cả single_cake status available.
 var seedProducts = []seedProduct{
 	{
 		slug:         "nguyet-quang-kim",
@@ -59,6 +61,7 @@ var seedProducts = []seedProduct{
 		price:        890000,
 		productType:  "gift_box",
 		status:       "available",
+		badge:        "",
 		displayOrder: 1,
 	},
 	{
@@ -68,6 +71,7 @@ var seedProducts = []seedProduct{
 		price:        620000,
 		productType:  "gift_box",
 		status:       "available",
+		badge:        "",
 		displayOrder: 2,
 	},
 	{
@@ -77,6 +81,7 @@ var seedProducts = []seedProduct{
 		price:        360000,
 		productType:  "gift_box",
 		status:       "available",
+		badge:        "",
 		displayOrder: 3,
 	},
 	{
@@ -86,15 +91,17 @@ var seedProducts = []seedProduct{
 		price:        95000,
 		productType:  "single_cake",
 		status:       "available",
+		badge:        "Bán chạy",
 		displayOrder: 4,
 	},
 	{
 		slug:         "sen-nhuyen-trung",
-		name:         "Sen nhuyễn trứng muối",
+		name:         "Sen nhuyễn trứng",
 		description:  "Bánh dẻo · 150g · Dẻo mịn, ngọt thanh",
 		price:        80000,
 		productType:  "single_cake",
 		status:       "available",
+		badge:        "",
 		displayOrder: 5,
 	},
 	{
@@ -103,8 +110,19 @@ var seedProducts = []seedProduct{
 		description:  "Bánh nướng · 180g · Thơm trà, bùi hạt sen",
 		price:        90000,
 		productType:  "single_cake",
-		status:       "sold_out",
+		status:       "available",
+		badge:        "Mới",
 		displayOrder: 6,
+	},
+	{
+		slug:         "dau-xanh-lava",
+		name:         "Đậu xanh lava",
+		description:  "Bánh dẻo · 150g · Nhân chảy, béo nhẹ",
+		price:        85000,
+		productType:  "single_cake",
+		status:       "available",
+		badge:        "",
+		displayOrder: 7,
 	},
 }
 
@@ -161,24 +179,36 @@ func run() error {
 	return nil
 }
 
-// seedProductRows nạp seedProducts vào bảng products. ON CONFLICT (slug) DO NOTHING
-// làm lệnh idempotent — chạy lại không tạo trùng, không lỗi (slug có UNIQUE, xem
-// migrations/0002_products.up.sql).
+// seedProductRows upsert seedProducts vào bảng products. ON CONFLICT (slug) DO UPDATE
+// làm lệnh idempotent VÀ sửa được row cũ (badge/status...) cho khớp mockup — chạy lại
+// hội tụ cùng một trạng thái, không tạo trùng (slug có UNIQUE, xem 0002_products.up.sql).
+// image_url KHÔNG bị ghi đè khi update (giữ ảnh admin đã upload). badge rỗng lưu NULL.
 func seedProductRows(ctx context.Context, pool *pgxpool.Pool) error {
 	for _, p := range seedProducts {
-		tag, err := pool.Exec(ctx,
-			`INSERT INTO products (slug, name, description, price, type, status, image_url, display_order)
-			 VALUES ($1, $2, $3, $4, $5, $6, '', $7)
-			 ON CONFLICT (slug) DO NOTHING`,
-			p.slug, p.name, p.description, p.price, p.productType, p.status, p.displayOrder,
-		)
+		// RETURNING (xmax = 0): true nếu là INSERT mới, false nếu UPDATE row có sẵn.
+		var inserted bool
+		err := pool.QueryRow(ctx,
+			`INSERT INTO products (slug, name, description, price, type, status, image_url, badge, display_order)
+			 VALUES ($1, $2, $3, $4, $5, $6, '', NULLIF($7, ''), $8)
+			 ON CONFLICT (slug) DO UPDATE SET
+			     name          = EXCLUDED.name,
+			     description   = EXCLUDED.description,
+			     price         = EXCLUDED.price,
+			     type          = EXCLUDED.type,
+			     status        = EXCLUDED.status,
+			     badge         = EXCLUDED.badge,
+			     display_order = EXCLUDED.display_order,
+			     updated_at    = now()
+			 RETURNING (xmax = 0)`,
+			p.slug, p.name, p.description, p.price, p.productType, p.status, p.badge, p.displayOrder,
+		).Scan(&inserted)
 		if err != nil {
 			return fmt.Errorf("seed product %q: %w", p.slug, err)
 		}
-		if tag.RowsAffected() == 0 {
-			log.Printf("seed: sản phẩm %q đã tồn tại, bỏ qua (idempotent)", p.slug)
+		if inserted {
+			log.Printf("seed: tạo sản phẩm %q (%s, %s, badge=%q)", p.slug, p.productType, p.status, p.badge)
 		} else {
-			log.Printf("seed: tạo sản phẩm %q (%s, %s)", p.slug, p.productType, p.status)
+			log.Printf("seed: cập nhật sản phẩm %q (%s, %s, badge=%q) — idempotent upsert", p.slug, p.productType, p.status, p.badge)
 		}
 	}
 	return nil

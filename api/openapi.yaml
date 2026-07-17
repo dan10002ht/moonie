@@ -111,6 +111,10 @@ components:
         image_url:
           type: string
           nullable: true
+        badge:
+          type: string
+          nullable: true
+          description: Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có
         display_order:
           type: integer
     LeadInput:
