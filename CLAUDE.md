@@ -20,14 +20,20 @@ docs/   → Specs, plans, PROGRESS.md (handoff artifact)
 ## Lệnh thường dùng
 
 ```bash
-docker compose up -d          # Postgres (+ api/web khi đã có Dockerfile)
-cd web && npm run dev         # Next.js dev server (port 3000)
-cd api && go run ./cmd/server # Go API (port 8080)
-cd web && npm run lint && npm test        # lint + test web
-cd api && golangci-lint run && go test ./... # lint + test api
+make up                       # Postgres (Colima, host port 5440)
+make migrate                  # chạy migrations
+make gen                      # oapi-codegen + sqlc generate
+make lint                     # golangci-lint (api) — CGO_ENABLED=0
+make test                     # go test ./... (api) — CGO_ENABLED=0, gồm integration testcontainers
+make check                    # lint + test
+cd api && GOTOOLCHAIN=local go run ./cmd/server  # Go API (port 8080)
+cd web && npm run dev         # Next.js dev server (port 3000) — [Task 5 trở đi]
 ```
 
-(Cập nhật section này khi scaffold xong — lệnh phải chạy được thật.)
+**Ràng buộc môi trường máy dev (quan trọng — đừng vấp lại):**
+- **`CGO_ENABLED=0` bắt buộc** cho `go test`/`golangci-lint`: máy có shim `cc` (`~/.local/bin/cc`) shadow compiler thật → build cgo (gopsutil của testcontainers) fail `unknown option '-E'`. Pure-Go thì chạy bình thường. Đã bake vào `make test`/`make lint`. Chạy `golangci-lint run` trần (thiếu CGO_ENABLED=0) sẽ báo typecheck fail giả.
+- **Go floor = 1.25** (testcontainers-go v0.43 yêu cầu; đã nâng từ mục tiêu 1.23 ban đầu vì đây là dep test cốt lõi). pgx theo đó lên v5.9.2. `GOTOOLCHAIN=local` dùng toolchain sẵn (1.26.x). CI (Task 7) phải setup-go ≥ 1.25.
+- Docker chạy trên **Colima** (không Docker Desktop). testcontainers tự resolve socket, không cần override.
 
 ## Design tokens (từ design/mooni-design-system.html)
 
