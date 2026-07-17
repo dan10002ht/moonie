@@ -143,6 +143,11 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 	// /healthz, /products (REQ-LEAD-001). Ngưỡng: leadsRateLimit req/phút/IP.
 	r.Use(rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter()))
 
+	// Rate limit CHỈ cho POST /api/v1/auth/login (chống brute-force mật khẩu, M1)
+	// — không đụng /auth/logout, /admin/*, /products. Ngưỡng THẤP hơn /leads vì
+	// login nhạy cảm: loginRateLimit req/phút/IP. Vượt → 429 JSON {error}.
+	r.Use(rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter()))
+
 	// Auth: bảo vệ CHỈ nhóm /api/v1/admin/* bằng middleware JWT cookie. Các route
 	// /auth/login, /auth/logout, /products, /leads, /healthz KHÔNG qua middleware
 	// (REQ-AUTH-002). oapi mount mọi route trên cùng router nên ta gác theo prefix.
@@ -267,6 +272,30 @@ func newLeadsRateLimiter() func(http.Handler) http.Handler {
 		keyByRemoteIP,
 		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
 			httpx.WriteError(w, http.StatusTooManyRequests, "bạn gửi quá nhiều yêu cầu, vui lòng thử lại sau ít phút")
+		}),
+	)
+}
+
+// loginRateLimit là ngưỡng rate limit cho POST /auth/login: số lần thử đăng nhập
+// tối đa mỗi IP trong mỗi cửa sổ loginRateWindow.
+const (
+	// 10/phút/IP: thấp hơn leads vì login nhạy cảm — đủ cho người dùng gõ nhầm
+	// mật khẩu vài lần mà vẫn bóp nghẹt brute-force tự động (M1). Cùng cơ chế
+	// httprate theo RemoteAddr như /leads; sau reverse proxy cần đổi sang IP thật
+	// (GĐ6, đã ghi backlog).
+	loginRateLimit  = 10
+	loginRateWindow = time.Minute
+)
+
+// newLoginRateLimiter tạo middleware httprate giới hạn login theo IP, trả 429 JSON
+// {error} khi vượt ngưỡng — chống brute-force mật khẩu admin (M1).
+func newLoginRateLimiter() func(http.Handler) http.Handler {
+	return httprate.LimitBy(
+		loginRateLimit,
+		loginRateWindow,
+		keyByRemoteIP,
+		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
+			httpx.WriteError(w, http.StatusTooManyRequests, "bạn thử đăng nhập quá nhiều lần, vui lòng thử lại sau ít phút")
 		}),
 	)
 }

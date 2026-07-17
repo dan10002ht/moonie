@@ -252,3 +252,54 @@ func TestAdminRouteGuarded(t *testing.T) {
 		t.Fatalf("/auth/register: code = %d, want 404 (không có đăng ký public)", rec.Code)
 	}
 }
+
+// TestLoginRateLimit: middleware chặn brute-force POST /auth/login khi vượt
+// loginRateLimit lần/phút/IP, trả 429 JSON {error} (M1). Login đúng khi CHƯA vượt
+// ngưỡng vẫn 200. Route khác (/admin/*, /products) KHÔNG bị rate limit login.
+func TestLoginRateLimit(t *testing.T) {
+	// next giả lập handler thật trả 200 (không đụng verify password/cookie): ta chỉ
+	// kiểm lớp rate limit đứng TRƯỚC handler.
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h := rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter())(next)
+
+	fire := func(method, path string) int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(method, path, nil)
+		req.RemoteAddr = "203.0.113.77:5555"
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// loginRateLimit lần đầu (trong ngưỡng) phải qua → 200.
+	for i := 0; i < loginRateLimit; i++ {
+		if code := fire(http.MethodPost, "/api/v1/auth/login"); code != http.StatusOK {
+			t.Fatalf("login lần %d trong ngưỡng: code = %d, want 200", i+1, code)
+		}
+	}
+
+	// Lần kế tiếp vượt ngưỡng → 429 JSON {error} (chứng minh rate limit tồn tại).
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+	req.RemoteAddr = "203.0.113.77:5555"
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("vượt ngưỡng login: code = %d, want 429", rec.Code)
+	}
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body["error"] == "" {
+		t.Errorf("429 phải là JSON {error}, got %s", rec.Body.String())
+	}
+
+	// Endpoint khác KHÔNG bị rate limit login (dù cùng IP đã vượt ngưỡng ở login):
+	// /admin/me và /products vẫn đi thẳng qua next → 200.
+	if code := fire(http.MethodGet, "/api/v1/admin/me"); code != http.StatusOK {
+		t.Errorf("/admin/me bị rate limit login: code = %d, want 200", code)
+	}
+	if code := fire(http.MethodGet, "/api/v1/products"); code != http.StatusOK {
+		t.Errorf("/products bị rate limit login: code = %d, want 200", code)
+	}
+	// POST /auth/logout không nằm trong phạm vi rate limit login.
+	if code := fire(http.MethodPost, "/api/v1/auth/logout"); code != http.StatusOK {
+		t.Errorf("/auth/logout bị rate limit login: code = %d, want 200", code)
+	}
+}
