@@ -50,6 +50,10 @@ Tạo order + order_items trong transaction. Giá trong `order_items` là snapsh
 
 Lỗi trả JSON `{error: string}` với status code đúng ngữ nghĩa; không leak internal.
 
+**Quy ước phân trang (chốt 2026-07-17):**
+- **List-all (không paginate)**: `GET /products` — catalog là tập nhỏ có giới hạn (vài hộp quà + bánh lẻ), landing render hết. Paginate là over-engineering.
+- **Bắt buộc paginate**: mọi list admin trên bảng tăng-vô-hạn — `leads`, `orders`, `customers`. Dùng cursor hoặc `limit`/`offset` (mặc định limit 20, tối đa 100), trả kèm tổng số / cursor kế. Sắp mặc định mới nhất trước. Không bao giờ list-all các bảng này (giai đoạn 4/5 sẽ áp dụng).
+
 ## 5. UI
 
 - Nguồn chân lý: `design/mooni-design-system.html` (tokens, components) + `design/mooni-landing.html` (layout). Design tokens đã trích vào CLAUDE.md (navy `#041E4F`, gold `#C6A867`, cream `#F7F6F4`, font Playfair Display + Be Vietnam Pro).

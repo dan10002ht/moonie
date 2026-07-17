@@ -28,6 +28,8 @@
 - Admin seed mặc định: `admin@mooni.local` / `mooni-admin`.
 - CI chưa chạy GitHub thật (chưa có remote) — verified commands local. Cần tạo remote khi sẵn sàng.
 - Còn treo: migrate ticket-mcrsv sang Colima + tắt Docker Desktop (side-quest, chờ sau).
+- **Phân trang (chốt 2026-07-17)**: `GET /products` list-all (tập nhỏ, cố ý). Admin lists `leads`/`orders`/`customers` BẮT BUỘC paginate (limit/offset mặc định 20, max 100, mới nhất trước) — bake vào plan GĐ4/5.
+- GitHub remote: https://github.com/dan10002ht/moonie.git (push 2026-07-17, CI chạy thật).
 
 ## Quyết định đã chốt (không mở lại nếu không có lý do mới)
 
