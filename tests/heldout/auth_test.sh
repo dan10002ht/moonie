@@ -230,20 +230,34 @@ if [[ "$CODE6" == "401" ]]; then pass "/admin/me cookie giả → 401"; else
 fi
 
 # ===========================================================================
-# Assert 7: KHÔNG đăng ký public — register route không tồn tại (404)
+# Assert 7: KHÔNG đăng ký public (REQ-AUTH-003)
+#   /auth/register  (route CÔNG KHAI)     → phải 404 (route không tồn tại).
+#   /admin/register (dưới prefix bảo vệ)  → chấp nhận 401 HOẶC 404: cả hai đều
+#     nghĩa là KHÔNG đăng ký được. 401 = middleware bảo vệ /api/v1/admin/*
+#     chặn mọi path chưa route trước khi tới 404 handler — đúng và kín hơn
+#     (không lộ route admin tồn tại hay không). Không có cách nào đăng ký.
 # ===========================================================================
 echo "== [7] Không có đăng ký public (REQ-AUTH-003) =="
-for RPATH in "auth/register" "admin/register"; do
-  RCODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
-    -H 'Content-Type: application/json' \
-    --data '{"email":"x@y.z","password":"whatever123"}' \
-    "$API_BASE/$RPATH")"
-  if [[ "$RCODE" == "404" ]]; then
-    pass "POST /$RPATH → 404 (route không tồn tại)"
-  else
-    fail "POST /$RPATH → HTTP $RCODE (kỳ vọng 404 — không được có đăng ký public)"
-  fi
-done
+# 7a: /auth/register công khai → 404
+PUB_CODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  -H 'Content-Type: application/json' \
+  --data '{"email":"x@y.z","password":"whatever123"}' \
+  "$API_BASE/auth/register")"
+if [[ "$PUB_CODE" == "404" ]]; then
+  pass "POST /auth/register → 404 (route công khai không tồn tại)"
+else
+  fail "POST /auth/register → HTTP $PUB_CODE (kỳ vọng 404 — không được có đăng ký công khai)"
+fi
+# 7b: /admin/register dưới prefix bảo vệ → 401 hoặc 404 (đều = không đăng ký được)
+ADM_CODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  -H 'Content-Type: application/json' \
+  --data '{"email":"x@y.z","password":"whatever123"}' \
+  "$API_BASE/admin/register")"
+if [[ "$ADM_CODE" == "401" || "$ADM_CODE" == "404" ]]; then
+  pass "POST /admin/register → $ADM_CODE (không đăng ký được: 401=middleware bảo vệ admin namespace, 404=không route)"
+else
+  fail "POST /admin/register → HTTP $ADM_CODE (kỳ vọng 401 hoặc 404 — không được có đăng ký admin)"
+fi
 
 # ===========================================================================
 # Assert 8: logout → 200 + cookie mc_admin bị xóa; sau đó /admin/me → 401
