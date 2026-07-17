@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* Mooni Cake — design tokens (REQ-ADM-001).
    Nguồn chân lý: design/mooni-design-system.html. */
@@ -9,7 +13,6 @@
   --color-gold-deep: #b0925a;
   --color-cream: #f7f6f4;
   --color-ink: #22201b;
-  --color-border: #e6e4de;
 
   /* Bổ sung cho landing (port từ design/mooni-landing.html) */
   --color-navy-tint: #eef1f7; /* nền icon, section liên hệ */
@@ -41,14 +44,106 @@
   --color-stock-out-dot: #b7b2a8; /* "Hết hàng" chấm mờ */
 }
 
-/* Font variables được cấp qua next/font/google trong app/layout.tsx. */
+/* Cầu nối shadcn/ui → tokens Mooni.
+   Các biến ngữ nghĩa của shadcn (background/foreground/primary/…) được ÁNH XẠ
+   sang bảng màu Mooni: primary=navy, accent=gold, background=cream, foreground=ink.
+   KHÔNG dùng theme mặc định đen/trắng/tím của shadcn. Admin không dùng dark mode. */
+:root {
+  --radius: 0.5rem;
+
+  --background: #f7f6f4; /* cream */
+  --foreground: #22201b; /* ink */
+
+  --card: #ffffff; /* card trắng nổi trên nền cream */
+  --card-foreground: #22201b; /* ink */
+  --popover: #ffffff;
+  --popover-foreground: #22201b;
+
+  --primary: #041e4f; /* navy */
+  --primary-foreground: #f7f6f4; /* cream trên navy */
+
+  --secondary: #eef1f7; /* navy-tint */
+  --secondary-foreground: #041e4f; /* navy */
+
+  --muted: #eef1f7; /* navy-tint */
+  --muted-foreground: #4c483f; /* ink-muted */
+
+  --accent: #c6a867; /* gold */
+  --accent-foreground: #22201b; /* ink trên gold */
+
+  --destructive: #c43d3d; /* sale red — lỗi/xóa */
+
+  --border: #e6e4de; /* border Mooni */
+  --input: #d6d2ca; /* border-strong cho input */
+  --ring: #c6a867; /* gold — focus ring sang trọng */
+
+  --chart-1: #041e4f;
+  --chart-2: #c6a867;
+  --chart-3: #2a3557;
+  --chart-4: #4c5a82;
+  --chart-5: #b0925a;
+
+  /* Sidebar admin — nền navy, chữ sáng, active gold */
+  --sidebar: #041e4f; /* navy */
+  --sidebar-foreground: #d3daea; /* navy-fog */
+  --sidebar-primary: #c6a867; /* gold — mục đang chọn */
+  --sidebar-primary-foreground: #041e4f; /* navy trên gold */
+  --sidebar-accent: #0b2a64; /* navy-light — hover */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #35507f; /* footer-border */
+  --sidebar-ring: #c6a867;
+}
+
+/* Ánh xạ tokens Mooni + shadcn vào không gian tiện ích Tailwind v4. */
 @theme inline {
   --font-serif: var(--font-playfair);
   --font-sans: var(--font-be-vietnam);
+  --font-heading: var(--font-playfair);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
-body {
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
 }

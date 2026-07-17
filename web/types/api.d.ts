@@ -64,6 +64,310 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Đăng nhập admin
+         * @description Xác thực admin bằng email + password (bcrypt). Đúng → đặt JWT trong cookie httpOnly `mc_admin` (SameSite=Lax, Secure ở production) và trả {ok:true}. Sai email HOẶC sai mật khẩu → 401 với cùng một thông điệp (chống dò tài khoản). KHÔNG có đăng ký public (REQ-AUTH-001/002/003).
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Đăng xuất admin
+         * @description Xóa cookie phiên `mc_admin` (Max-Age=-1). Luôn trả 200.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tổng quan admin (dashboard)
+         * @description Trả 3 chỉ số tổng quan: số leads mới (status='new'), số đơn đang xử lý (status ∈ {confirmed, delivering}), và doanh thu tháng hiện tại (tổng total các đơn status='done' tạo trong tháng, neo múi giờ Việt Nam Asia/Ho_Chi_Minh). Cần auth admin (REQ-DASH-001).
+         */
+        get: operations["getAdminDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thông tin admin đang đăng nhập
+         * @description Trả admin tương ứng phiên hiện tại (đọc từ JWT qua middleware auth). Dùng để web biết đã đăng nhập. Thiếu/sai cookie → 401 (REQ-AUTH-002).
+         */
+        get: operations["getAdminMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Danh sách leads cho admin (phân trang)
+         * @description Trả về leads phân trang, mới nhất trước (ORDER BY created_at DESC, id). limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0. Trả {items, total}. Cần auth admin (REQ-LEAD-004).
+         */
+        get: operations["listAdminLeads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cập nhật trạng thái lead
+         * @description Đổi trạng thái lead (new | contacted | converted | closed). Trạng thái không hợp lệ → 400, không tìm thấy → 404. Cần auth admin (REQ-LEAD-004).
+         */
+        patch: operations["updateLeadStatus"];
+        trace?: never;
+    };
+    "/admin/leads/{id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert lead thành đơn nháp
+         * @description Tạo đơn NHÁP (status='new', tổng tiền 0) từ lead trong cùng transaction: lấy tên/SĐT/lời nhắn lead ghi vào order.note, kênh map từ lead.source, KHÔNG tạo customer (order.customer_id NULL). Đánh dấu lead.status='converted' + lead.order_id. Sau commit bắn Telegram thông báo đơn mới (fail-safe). Lead đã convert → 409. Cần auth admin (REQ-LEAD-005, REQ-NOTI-002).
+         */
+        post: operations["convertLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Danh sách đơn hàng cho admin (phân trang)
+         * @description Trả về đơn hàng phân trang, mới nhất trước (ORDER BY created_at DESC, id). limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0. Trả {items, total}. Cần auth admin (REQ-ORD-001).
+         */
+        get: operations["listAdminOrders"];
+        put?: never;
+        /**
+         * Tạo đơn hàng (nhập tay)
+         * @description Tạo đơn + order_items TRONG một transaction (REQ-ORD-003). Với mỗi dòng lấy sản phẩm theo product_id để SNAPSHOT product_name + unit_price (giá hiện tại) (REQ-ORD-004). subtotal = Σ(unit_price×quantity), total = subtotal − discount. Sinh mã đơn MC-YYYYMMDD-xxxx. Sau commit bắn Telegram thông báo đơn mới (fail-safe). items rỗng / quantity ≤ 0 / discount vượt subtotal → 400; product_id không tồn tại → 400 (rollback toàn bộ). Cần auth admin (REQ-ORD-001/003/004, REQ-NOTI-002).
+         */
+        post: operations["createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Chi tiết đơn hàng + các dòng
+         * @description Trả chi tiết một đơn kèm mảng items (snapshot product_name/unit_price/ quantity tại thời điểm đặt). Không tìm thấy → 404. Cần auth admin (REQ-ORD-001/004).
+         */
+        get: operations["getAdminOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cập nhật trạng thái đơn hàng
+         * @description Đổi trạng thái đơn (new | confirmed | delivering | done | cancelled) (REQ-ORD-002). Trạng thái không hợp lệ → 400. Đơn ở trạng thái kết thúc (done/cancelled) KHÔNG được đổi sang trạng thái khác → 400. Không tìm thấy → 404. Cần auth admin.
+         */
+        patch: operations["updateOrderStatus"];
+        trace?: never;
+    };
+    "/admin/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Danh sách khách hàng cho admin (phân trang)
+         * @description Trả về khách hàng phân trang, mới nhất trước (ORDER BY created_at DESC, id). limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0. Trả {items, total}. Cần auth admin (REQ-CUST-001).
+         */
+        get: operations["listAdminCustomers"];
+        put?: never;
+        /**
+         * Tạo khách hàng
+         * @description Tạo khách hàng. Validate ở handler TRƯỚC khi chạm DB: name không rỗng, type ∈ {personal, business} (sai → 400, không để CHECK constraint bung 500), phone nếu có phải đúng định dạng VN, email nếu có phải chứa @ và domain, độ dài các trường hợp lý. Cần auth admin (REQ-CUST-001).
+         */
+        post: operations["createCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Chi tiết khách hàng
+         * @description Trả chi tiết một khách hàng theo id. Không tìm thấy → 404. Cần auth admin (REQ-CUST-001).
+         */
+        get: operations["getAdminCustomer"];
+        /**
+         * Cập nhật khách hàng
+         * @description Cập nhật toàn bộ thuộc tính khách hàng theo id. Validate như tạo mới (name không rỗng, type enum, phone/email định dạng). Không tìm thấy → 404. Cần auth admin (REQ-CUST-001).
+         */
+        put: operations["updateCustomer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Danh sách sản phẩm cho admin (gồm cả hidden)
+         * @description Trả về TẤT CẢ sản phẩm kể cả status='hidden', sắp tất định theo display_order rồi created_at rồi id. Cần auth admin (REQ-PROD-002).
+         */
+        get: operations["listAdminProducts"];
+        put?: never;
+        /**
+         * Tạo sản phẩm mới
+         * @description Tạo sản phẩm. Validate: name không rỗng, slug không rỗng, price ≥ 0, type ∈ {gift_box, single_cake}, status ∈ {available, sold_out, hidden}. Slug trùng → 409. Cần auth admin (REQ-PROD-002).
+         */
+        post: operations["createProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cập nhật sản phẩm
+         * @description Cập nhật toàn bộ thuộc tính sản phẩm theo id. Validate như tạo mới. Slug trùng → 409, không tìm thấy → 404. Cần auth admin (REQ-PROD-002).
+         */
+        put: operations["updateProduct"];
+        post?: never;
+        /**
+         * Xóa (ẩn) sản phẩm
+         * @description Xóa MỀM: đặt status='hidden' (an toàn hơn xóa cứng vì order_items tham chiếu product_id). Cần auth admin (REQ-PROD-002).
+         */
+        delete: operations["deleteProduct"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload ảnh sản phẩm
+         * @description Nhận file ảnh (multipart/form-data, field tên "file"), validate loại (image/png|jpeg|webp) và kích thước (≤ 5MB), lưu vào thư mục uploads/ và đặt products.image_url = "/uploads/<file>". Cần auth admin (REQ-PROD-003).
+         */
+        post: operations["uploadProductImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -95,6 +399,33 @@ export interface components {
             subtitle?: string | null;
             display_order: number;
         };
+        ProductInput: {
+            /** @description Định danh URL (duy nhất). Trùng → 409. */
+            slug: string;
+            /** @description Tên sản phẩm (bắt buộc, không rỗng) */
+            name: string;
+            description?: string | null;
+            /**
+             * Format: int64
+             * @description Giá VND, số nguyên ≥ 0
+             */
+            price: number;
+            /** @description Loại sản phẩm. Hợp lệ- gift_box | single_cake */
+            type: string;
+            /** @description Trạng thái. Hợp lệ- available | sold_out | hidden */
+            status: string;
+            image_url?: string | null;
+            badge?: string | null;
+            /** Format: int64 */
+            compare_at_price?: number | null;
+            subtitle?: string | null;
+            /** @description Thứ tự hiển thị (mặc định 0 nếu bỏ trống) */
+            display_order?: number | null;
+        };
+        ImageUploadResult: {
+            /** @description Đường dẫn public của ảnh, vd "/uploads/<uuid>.png" */
+            image_url: string;
+        };
         LeadInput: {
             /** @description Tên khách hàng (bắt buộc) */
             name: string;
@@ -109,9 +440,232 @@ export interface components {
             /** Format: uuid */
             id: string;
         };
+        Lead: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            phone: string;
+            message?: string | null;
+            product_interest?: string | null;
+            /** @description Nguồn lead (website | phone | zalo | fb | ...) */
+            source: string;
+            /** @enum {string} */
+            status: "new" | "contacted" | "converted" | "closed";
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: uuid
+             * @description Đơn đã convert từ lead này (null nếu chưa convert)
+             */
+            order_id?: string | null;
+        };
+        LeadList: {
+            items: components["schemas"]["Lead"][];
+            /**
+             * Format: int64
+             * @description Tổng số lead (không phân trang)
+             */
+            total: number;
+        };
+        LeadStatusInput: {
+            /** @description Trạng thái mới. Hợp lệ- new | contacted | converted | closed */
+            status: string;
+        };
+        ConvertLeadResult: {
+            /** Format: uuid */
+            order_id: string;
+            /** @description Mã đơn sinh tự động, vd "MC-20260717-AB12" */
+            order_code: string;
+        };
+        OrderItemInput: {
+            /**
+             * Format: uuid
+             * @description Sản phẩm đặt. Không tồn tại → 400 (rollback toàn bộ đơn).
+             */
+            product_id: string;
+            /** @description Số lượng, phải > 0 và ≤ 10000 */
+            quantity: number;
+        };
+        OrderInput: {
+            /**
+             * @description Kênh đặt hàng
+             * @enum {string}
+             */
+            channel: "website" | "phone" | "zalo" | "fb";
+            /**
+             * Format: uuid
+             * @description Khách hàng (tùy chọn — gắn thủ công)
+             */
+            customer_id?: string | null;
+            /**
+             * Format: int64
+             * @description Giảm giá VND ≥ 0 (mặc định 0). Vượt tổng tiền hàng → 400.
+             */
+            discount?: number | null;
+            /** Format: date */
+            delivery_date?: string | null;
+            delivery_address?: string | null;
+            note?: string | null;
+            /** @description Ít nhất 1 dòng đơn, tối đa 100 */
+            items: components["schemas"]["OrderItemInput"][];
+        };
+        Order: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** Format: uuid */
+            customer_id?: string | null;
+            /** @enum {string} */
+            channel: "website" | "phone" | "zalo" | "fb";
+            /** @enum {string} */
+            status: "new" | "confirmed" | "delivering" | "done" | "cancelled";
+            /** Format: int64 */
+            subtotal: number;
+            /** Format: int64 */
+            discount: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: date */
+            delivery_date?: string | null;
+            delivery_address?: string | null;
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        OrderItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            product_id?: string | null;
+            /** @description Snapshot tên sản phẩm tại thời điểm đặt */
+            product_name: string;
+            /**
+             * Format: int64
+             * @description Snapshot đơn giá tại thời điểm đặt (VND)
+             */
+            unit_price: number;
+            quantity: number;
+        };
+        OrderDetail: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** Format: uuid */
+            customer_id?: string | null;
+            /** @enum {string} */
+            channel: "website" | "phone" | "zalo" | "fb";
+            /** @enum {string} */
+            status: "new" | "confirmed" | "delivering" | "done" | "cancelled";
+            /** Format: int64 */
+            subtotal: number;
+            /** Format: int64 */
+            discount: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: date */
+            delivery_date?: string | null;
+            delivery_address?: string | null;
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            items: components["schemas"]["OrderItem"][];
+        };
+        OrderList: {
+            items: components["schemas"]["Order"][];
+            /**
+             * Format: int64
+             * @description Tổng số đơn (không phân trang)
+             */
+            total: number;
+        };
+        OrderCreated: {
+            /** Format: uuid */
+            id: string;
+            /** @description Mã đơn sinh tự động, vd "MC-20260717-AB12" */
+            code: string;
+        };
+        OrderStatusInput: {
+            /** @description Trạng thái mới. Hợp lệ- new | confirmed | delivering | done | cancelled */
+            status: string;
+        };
+        CustomerInput: {
+            /** @description Tên khách hàng, bắt buộc, không rỗng */
+            name: string;
+            /** @description SĐT Việt Nam (tùy chọn). Nếu có phải đúng định dạng VN. */
+            phone?: string | null;
+            /** @description Email (tùy chọn). Nếu có phải chứa @ và domain. */
+            email?: string | null;
+            company?: string | null;
+            address?: string | null;
+            /**
+             * @description Loại khách. Sai enum → 400.
+             * @enum {string}
+             */
+            type: "personal" | "business";
+            note?: string | null;
+        };
+        Customer: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            phone?: string | null;
+            email?: string | null;
+            company?: string | null;
+            address?: string | null;
+            /** @enum {string} */
+            type: "personal" | "business";
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CustomerList: {
+            items: components["schemas"]["Customer"][];
+            /**
+             * Format: int64
+             * @description Tổng số khách hàng (không phân trang)
+             */
+            total: number;
+        };
+        CustomerCreated: {
+            /** Format: uuid */
+            id: string;
+        };
+        Dashboard: {
+            /**
+             * Format: int64
+             * @description Số leads mới (status='new')
+             */
+            new_leads: number;
+            /**
+             * Format: int64
+             * @description Số đơn đang xử lý (status ∈ {confirmed, delivering})
+             */
+            processing_orders: number;
+            /**
+             * Format: int64
+             * @description Doanh thu tháng hiện tại — tổng total các đơn status='done' tạo trong tháng, neo múi giờ Việt Nam (Asia/Ho_Chi_Minh).
+             */
+            revenue_this_month: number;
+        };
         Health: {
             /** @example ok */
             status: string;
+        };
+        LoginInput: {
+            /** @description Email admin */
+            email: string;
+            /** @description Mật khẩu (không log, không lưu plaintext) */
+            password: string;
+        };
+        LoginResult: {
+            /** @example true */
+            ok: boolean;
+        };
+        AdminMe: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            name?: string | null;
         };
         Error: {
             error: string;
@@ -198,6 +752,830 @@ export interface operations {
             };
             /** @description Gửi quá nhiều yêu cầu (rate limit) */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginInput"];
+            };
+        };
+        responses: {
+            /** @description Đăng nhập thành công (kèm Set-Cookie mc_admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResult"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Email hoặc mật khẩu không đúng */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã đăng xuất */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResult"];
+                };
+            };
+        };
+    };
+    getAdminDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 3 chỉ số tổng quan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Chưa đăng nhập hoặc phiên không hợp lệ */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAdminMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Thông tin admin hiện tại */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMe"];
+                };
+            };
+            /** @description Chưa đăng nhập hoặc phiên không hợp lệ */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAdminLeads: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách leads + tổng số */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadList"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateLeadStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadStatusInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật trạng thái */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lead"];
+                };
+            };
+            /** @description Trạng thái không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy lead */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    convertLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã tạo đơn nháp từ lead */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertLeadResult"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy lead */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Lead đã được convert trước đó */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAdminOrders: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách đơn hàng + tổng số */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderList"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderInput"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo đơn hàng */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderCreated"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ (items rỗng, quantity ≤ 0, discount vượt subtotal, product không tồn tại) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAdminOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết đơn hàng */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderStatusInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật trạng thái */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            /** @description Trạng thái không hợp lệ hoặc chuyển trạng thái không cho phép */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAdminCustomers: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách khách hàng + tổng số */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerList"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerInput"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo khách hàng */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCreated"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ (name rỗng, type sai, phone/email sai định dạng) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAdminCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết khách hàng */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy khách hàng */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật khách hàng */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy khách hàng */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAdminProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách sản phẩm (gồm hidden) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Product"][];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductInput"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo sản phẩm */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Product"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Slug đã tồn tại */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật sản phẩm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Product"];
+                };
+            };
+            /** @description Dữ liệu vào không hợp lệ */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy sản phẩm */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Slug đã tồn tại */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã ẩn sản phẩm (soft delete) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy sản phẩm */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    uploadProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Đã upload ảnh */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageUploadResult"];
+                };
+            };
+            /** @description File không hợp lệ (thiếu, sai loại, quá lớn) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Không tìm thấy sản phẩm */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

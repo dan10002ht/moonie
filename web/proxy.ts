@@ -15,16 +15,22 @@ const LOGIN_PATH = "/admin/login";
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
+  const hasSession = Boolean(request.cookies.get(COOKIE_NAME)?.value);
+  const isLogin =
+    pathname === LOGIN_PATH || pathname.startsWith(`${LOGIN_PATH}/`);
 
-  // Trang đăng nhập luôn cho qua (nếu không sẽ lặp redirect vô hạn).
-  if (pathname === LOGIN_PATH || pathname.startsWith(`${LOGIN_PATH}/`)) {
+  // Trang đăng nhập: đã có phiên → vào thẳng /admin (khỏi đăng nhập lại);
+  // chưa có phiên → cho qua (nếu chặn sẽ lặp redirect vô hạn).
+  if (isLogin) {
+    if (hasSession) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
     return NextResponse.next();
   }
 
-  const hasSession = request.cookies.get(COOKIE_NAME)?.value;
+  // Mọi /admin/* khác: thiếu cookie → về trang đăng nhập.
   if (!hasSession) {
-    const loginUrl = new URL(LOGIN_PATH, request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
   return NextResponse.next();

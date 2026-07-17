@@ -12,7 +12,11 @@ export type LeadInput = components["schemas"]["LeadInput"];
 /** Kết quả tạo lead — chỉ chứa `id`. */
 export type LeadCreated = components["schemas"]["LeadCreated"];
 
-const API_BASE =
+/**
+ * Base URL của Go API. Server-to-server (Server Action / route handler) nên trỏ
+ * thẳng API nội bộ; browser KHÔNG gọi trực tiếp (tránh CORS + lộ endpoint admin).
+ */
+export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080/api/v1";
 
 /** Lỗi HTTP từ API — mang theo status code để caller xử lý ngữ nghĩa. */
