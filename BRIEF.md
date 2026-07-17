@@ -112,7 +112,7 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
 6. [✅] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
    - Files: cmd/server/admin_customers.go (CRUD + validate name/type/phone/email/MaxLen), main.go ErrorHandlerFunc chuẩn hóa lỗi param JSON toàn API. Commit 498255d → 5d5497a.
    - Gate: HELD-OUT PASS (phân trang {items,total}, CRUD, validate 400 trước DB, không leak log). go-reviewer PASS → fix param bind error → JSON {error} toàn API (finding minor). phone/email không unique = chủ đích spec.
-7. [ ] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
+7. [⏳] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
    - security-review scope thêm (từ go-reviewer Task 2): (a) CSRF cho admin mutations POST/PUT/DELETE (SameSite=Lax hiện đủ cho form cross-site nhưng cân nhắc double-submit/Origin check khi có mutation); (b) quy ước "mọi route cần auth phải dưới /api/v1/admin/*" — kiểm không route mutation nào đặt ngoài prefix mà quên bảo vệ.
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
