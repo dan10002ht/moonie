@@ -20,7 +20,8 @@ CREATE TABLE orders (
     delivery_address text,
     note             text,
     created_at       timestamptz NOT NULL DEFAULT now(),
-    updated_at       timestamptz NOT NULL DEFAULT now()
+    updated_at       timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT orders_amounts_non_negative CHECK (subtotal >= 0 AND discount >= 0 AND total >= 0)
 );
 
 CREATE TABLE order_items (

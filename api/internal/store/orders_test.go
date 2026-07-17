@@ -250,3 +250,55 @@ func TestListOrdersPaginationAndRevenue(t *testing.T) {
 		t.Errorf("CountProcessingOrders = %d, mong đợi 1", processing)
 	}
 }
+
+// TestSumRevenueThisMonthTimezone bắt bug timezone: doanh thu tháng phải tính theo
+// giờ VN (Asia/Ho_Chi_Minh, UTC+7), không theo UTC. Mốc đầu tháng VN sớm hơn mốc
+// UTC 7 tiếng — đơn done đặt sát nửa đêm đầu tháng giờ VN rơi vào khe đó. Query cũ
+// dùng date_trunc theo UTC sẽ LOẠI nhầm đơn này → test fail; query đã sửa (đổi sang
+// giờ VN) tính đúng → test pass. created_at seed tương đối theo mốc tháng VN nên test
+// ổn định bất kể chạy ngày nào.
+func TestSumRevenueThisMonthTimezone(t *testing.T) {
+	pool := newTestDB(t)
+	q := store.New(pool)
+	ctx := context.Background()
+
+	seed := []struct {
+		code    string
+		status  string
+		total   int64
+		offset  string // interval cộng vào mốc đầu tháng giờ VN
+		counted bool
+	}{
+		// done, 00:30 sáng 01/MM giờ VN → thuộc tháng VN hiện tại. Tương ứng 17:30 UTC
+		// ngày cuối tháng trước → query UTC (sai) loại nhầm; query VN (đúng) tính.
+		{"MC-TZ-0001", "done", 300000, "30 minutes", true},
+		// done, 23:30 ngày cuối tháng TRƯỚC giờ VN → KHÔNG thuộc tháng này.
+		{"MC-TZ-0002", "done", 700000, "-30 minutes", false},
+		// done giữa tháng → luôn tính.
+		{"MC-TZ-0003", "done", 100000, "10 days", true},
+		// new giữa tháng → không tính doanh thu dù trong tháng.
+		{"MC-TZ-0004", "new", 999000, "5 days", false},
+	}
+	var want int64
+	for _, s := range seed {
+		_, err := pool.Exec(ctx,
+			`INSERT INTO orders (code, channel, status, subtotal, total, created_at)
+			 VALUES ($1, 'website', $2, $3, $3,
+			   date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh' + ($4)::interval)`,
+			s.code, s.status, s.total, s.offset)
+		if err != nil {
+			t.Fatalf("seed %s: %v", s.code, err)
+		}
+		if s.counted {
+			want += s.total
+		}
+	}
+
+	got, err := q.SumRevenueThisMonth(ctx)
+	if err != nil {
+		t.Fatalf("SumRevenueThisMonth: %v", err)
+	}
+	if got != want {
+		t.Errorf("SumRevenueThisMonth = %d, mong đợi %d (chỉ đơn done trong tháng giờ VN — bắt bug timezone)", got, want)
+	}
+}

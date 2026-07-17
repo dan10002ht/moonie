@@ -132,7 +132,12 @@ SELECT count(*) FROM leads WHERE status = 'new';
 SELECT count(*) FROM orders WHERE status IN ('confirmed', 'delivering');
 
 -- name: SumRevenueThisMonth :one
--- Doanh thu tháng hiện tại = tổng total các đơn đã 'done' tạo trong tháng.
+-- Doanh thu tháng hiện tại = tổng total các đơn đã 'done' tạo trong tháng, tính theo
+-- MÚI GIỜ VIỆT NAM (Asia/Ho_Chi_Minh). date_trunc trần chạy theo TZ server (UTC) →
+-- đơn done đặt sát nửa đêm đầu/cuối tháng giờ VN bị tính nhầm tháng. Đổi now() sang
+-- giờ VN, cắt về đầu tháng, rồi đổi ngược về timestamptz để so với created_at.
 SELECT coalesce(sum(total), 0)::bigint
 FROM orders
-WHERE status = 'done' AND created_at >= date_trunc('month', now());
+WHERE status = 'done'
+  AND created_at >= date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh')
+                     AT TIME ZONE 'Asia/Ho_Chi_Minh';
