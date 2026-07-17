@@ -9,3 +9,4 @@
 - **Task 4** — sqlc + golang-migrate (bảng `admin_users`) + integration test testcontainers-go (Postgres:16 thật). Phát hiện shim `cc` phá CGO → chuẩn hóa `make lint`/`make test` với `CGO_ENABLED=0`. Go floor lên 1.25 (testcontainers). Commit `ed1e6ea`, `0e74f8b`.
 - **Task 5** — Next.js 16.2.10 scaffold (Turbopack) + Tailwind v4 design tokens (`@theme`), font Playfair Display + Be Vietnam Pro, `lib/api.ts` client, `proxy.ts` skeleton auth guard `/admin`. Commit `dc40754`.
 - **Task 6** — openapi-typescript: sinh `web/types/api.d.ts` từ spec, `getHealth()` typed, `tsc --noEmit` thành contract gate compile-time phía web. Vòng contract web↔api khép kín. Commit `1ecc8f3`.
+- **Task 7** — CI GitHub Actions (`.github/workflows/ci.yml`, 2 job lint+test+build) + Dockerfile api (distroless 17.7MB) & web (standalone 388MB) + full `docker compose` cả stack. Fix package-lock portability (darwin→linux) và testcontainers trên Colima (socket override). Commit `7bda1f8`, `97589ae`.

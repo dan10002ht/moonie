@@ -29,8 +29,13 @@ Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (m�
 6. [✅] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
    - Files: web/types/api.d.ts (sinh, committed), lib/api.ts getHealth dùng components["schemas"]["Health"], script gen:api (openapi-typescript 7.13.0). Commit 1ecc8f3.
    - Gate PASS (verify độc lập): tsc sạch, không any, regenerate không drift (types khớp spec), gate chứng minh (getHealth sai type→tsc FAIL TS2322→khôi phục). Vòng contract web↔api khép kín.
-7. [⏳] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
-8. [ ] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
+7. [✅] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
+   - Files: api/Dockerfile (distroless 17.7MB), web/Dockerfile (standalone 388MB), .dockerignore x2, next.config output standalone, docker-compose.yml (+api +web), .github/workflows/ci.yml (2 job, go-version-file go.mod=1.25, CGO_ENABLED=0). Commit 7bda1f8; fix Colima 97589ae.
+   - Gate PASS (verify độc lập): compose config OK, full stack up (api healthz 200 + web 200), CI api job local xanh (vet/lint/test), CI web job local xanh, YAML hợp lệ.
+   - Generator bắt+fix bug package-lock không portable (darwin→linux npm ci fail, sẽ hỏng CI+docker); phục hồi Colima sau I/O error không mất data.
+   - MAIN AGENT FIX: testcontainers fail trên Colima (Task 4 vô tình pass nhờ Docker Desktop) → thêm DOCKER_HOST+SOCKET_OVERRIDE vào make test. CI GitHub không cần.
+   - LƯU Ý: CI chưa chạy trên GitHub thật (chưa có remote) — verified commands local.
+8. [⏳] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
