@@ -31,4 +31,5 @@
 ### Giai đoạn 4 — Admin API
 - **Task 1** — Schema `customers`/`orders`/`order_items` + `leads.order_id` + sqlc (CRUD, phân trang tie-break, dashboard). Fix flaky testcontainers + bug doanh thu lệch múi giờ (neo giờ VN). Commit `4f0eb84`, `7de3515`, `2f0b771`.
 - **Task 2** — Auth admin: login JWT httpOnly cookie (chống alg-confusion + user-enumeration + timing), middleware bảo vệ /admin/*, proxy.ts guard, reject JWT_SECRET yếu/placeholder. Held-out 16/16 + go-reviewer PASS (thử tấn công thật đều chặn). Commit `7b6b2ab`, `e8b7bb5`.
+- **Task 4** — Admin leads: list phân trang {items,total} + đổi status + convert lead→đơn nháp (transaction, note giữ contact, không tạo customer, Telegram notify). go-reviewer bắt race TOCTOU (2 convert→đơn mồ côi) → fix atomic guard + FOR UPDATE. Commit `fa305e8`, `8437554`.
 - **Task 3** — Admin products CRUD + upload ảnh (soft delete, magic-byte sniff, uuid filename, chống path-traversal/DoS). Held-out PASS + go-reviewer PASS (tấn công upload thật đều chặn) + hardening (slug regex, no dir-listing, nosniff). Commit `ad8e755`, `c76679b`.

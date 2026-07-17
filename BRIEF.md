@@ -103,7 +103,9 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
 3. [✅] Task 3 — Admin products CRUD + upload ảnh (REQ-PROD-002/003)
    - Files: cmd/server/admin_products.go (CRUD + upload magic-byte sniff + uuid filename + MaxBytesReader), main.go /uploads static (noDirFS + nosniff), config UploadsDir, soft delete=hidden. Commit ad8e755 → c76679b.
    - Gate: HELD-OUT PASS. go-reviewer PASS + tấn công upload thật (file thực thi giả/traversal/DoS đều chặn) → hardening 5 finding (dir-listing, nosniff, slug regex, display_order bounds, image_url chống XSS).
-4. [⏳] Task 4 — Admin leads list paginated + status + convert→order (REQ-LEAD-004/005)
+4. [✅] Task 4 — Admin leads list paginated + status + convert→order (REQ-LEAD-004/005)
+   - Files: cmd/server/admin_leads.go (list phân trang/status/convert), internal/store/convert.go (ConvertLead transaction + LockLead FOR UPDATE + guard), notify NotifyNewOrder. Commit fa305e8 → 8437554.
+   - Gate: HELD-OUT PASS (phân trang {items,total} mới-nhất-trước, convert không tạo customer, 401). go-reviewer FAIL → bắt RACE THẬT (tự viết test 2 goroutine: 2 convert song song → 2 đơn, 1 mồ côi) → fix atomic (WHERE order_id IS NULL + FOR UPDATE + rollback) + clamp offset overflow → re-verify PASS (race test 2 goroutine → 1 đơn, 0 mồ côi).
 5. [ ] Task 5 — Admin orders create(transaction+snapshot) + list + status + Telegram (REQ-ORD, REQ-NOTI-002)
 6. [ ] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
 7. [ ] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
