@@ -23,6 +23,22 @@ export type LeadList = components["schemas"]["LeadList"];
 /** Kết quả convert lead → đơn — schema `ConvertLeadResult` sinh từ OpenAPI. */
 export type ConvertLeadResult = components["schemas"]["ConvertLeadResult"];
 
+/** Một đơn hàng (bảng list) — schema `Order` sinh từ OpenAPI. */
+export type Order = components["schemas"]["Order"];
+/** Danh sách đơn phân trang — schema `OrderList` sinh từ OpenAPI. */
+export type OrderList = components["schemas"]["OrderList"];
+/** Chi tiết đơn + items snapshot — schema `OrderDetail` sinh từ OpenAPI. */
+export type OrderDetail = components["schemas"]["OrderDetail"];
+/** Payload tạo đơn — schema `OrderInput` sinh từ OpenAPI. */
+export type OrderInput = components["schemas"]["OrderInput"];
+/** Kết quả tạo đơn `{id, code}` — schema `OrderCreated` sinh từ OpenAPI. */
+export type OrderCreated = components["schemas"]["OrderCreated"];
+
+/** Một khách hàng — schema `Customer` sinh từ OpenAPI. */
+export type Customer = components["schemas"]["Customer"];
+/** Danh sách khách hàng phân trang — schema `CustomerList` sinh từ OpenAPI. */
+export type CustomerList = components["schemas"]["CustomerList"];
+
 /**
  * Kết quả một thao tác ghi (tạo/sửa/upload). `ok:false` mang `message` lấy từ
  * body `{error}` của API (400 dữ liệu sai, 409 slug trùng…) để form hiện lỗi.
@@ -370,6 +386,100 @@ export async function convertLead(
   } catch (err) {
     return toFailure(err);
   }
+}
+
+/** Làm mới cache trang admin đơn hàng sau khi tạo/đổi status. */
+function revalidateOrders(): void {
+  revalidatePath("/admin/orders");
+}
+
+/**
+ * Danh sách đơn hàng phân trang cho bảng quản trị (mới nhất trước). Gọi GET
+ * {API}/admin/orders?limit&offset kèm cookie phiên. Trả `{items, total}`. Ném
+ * `ApiError` (401) để caller xử lý.
+ */
+export async function listOrders(
+  limit: number,
+  offset: number,
+): Promise<OrderList> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return adminFetch<OrderList>(`/admin/orders?${params.toString()}`);
+}
+
+/**
+ * Chi tiết một đơn (gồm items snapshot). Gọi GET {API}/admin/orders/{id} kèm
+ * cookie phiên. Ném `ApiError` (401/404) để caller xử lý.
+ */
+export async function getOrder(id: string): Promise<OrderDetail> {
+  return adminFetch<OrderDetail>(`/admin/orders/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Tạo đơn hàng (nhập tay, nhiều dòng món). POST {API}/admin/orders. 201 → trả
+ * `{id, code}`; 400 (dữ liệu sai: không dòng món, sản phẩm không tồn tại, giảm
+ * giá vượt tổng…) → `ok:false` kèm message. Revalidate list khi thành công.
+ */
+export async function createOrder(
+  input: OrderInput,
+): Promise<ActionResult<OrderCreated>> {
+  try {
+    const data = await adminFetch<OrderCreated>("/admin/orders", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    revalidateOrders();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Đổi trạng thái đơn. PATCH {API}/admin/orders/{id} body `{status}`. 200 → trả
+ * đơn mới; 400 (status sai / đơn đã kết thúc) / 404 → `ok:false` kèm message.
+ * Revalidate list để bảng hiện trạng thái mới.
+ */
+export async function updateOrderStatus(
+  id: string,
+  status: string,
+): Promise<ActionResult<Order>> {
+  try {
+    const data = await adminFetch<Order>(
+      `/admin/orders/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ status }) },
+    );
+    revalidateOrders();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Danh sách khách hàng phân trang. Gọi GET {API}/admin/customers?limit&offset
+ * kèm cookie phiên. Trả `{items, total}`. Ném `ApiError` (401) để caller xử lý.
+ */
+export async function listCustomers(
+  limit: number,
+  offset: number,
+): Promise<CustomerList> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return adminFetch<CustomerList>(`/admin/customers?${params.toString()}`);
+}
+
+/**
+ * Lấy TẤT CẢ khách hàng cho picker chọn khách khi tạo đơn (tối đa 100 — API kẹp
+ * limit về 100). Trả mảng `Customer[]`. Ném `ApiError` để caller xử lý.
+ */
+export async function listCustomersForPicker(): Promise<Customer[]> {
+  const data = await listCustomers(100, 0);
+  return data.items;
 }
 
 /** Re-export cho caller phân biệt lỗi theo status khi cần. */
