@@ -23,3 +23,4 @@
 
 ### Giai đoạn 3 — Landing page
 - **Task 1** — Seed 7 sản phẩm mẫu khớp mockup (3 hộp quà + 4 bánh lẻ) + field `badge` (migration 0004) cho nhãn "Bán chạy"/"Mới" + cài Playwright. Commit `bd6b935`, `bc41529`.
+- **Task 2** — Landing frame (announcement bar, header + menu mobile, hero navy serif, trust strip, footer, sticky CTA mobile) port 1:1 từ mockup. design-evaluator PASS 9/9/8/9. Commit `bfbbc00`.
