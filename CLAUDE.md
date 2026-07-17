@@ -33,7 +33,7 @@ cd web && npm run dev         # Next.js dev server (port 3000) — [Task 5 trở
 **Ràng buộc môi trường máy dev (quan trọng — đừng vấp lại):**
 - **`CGO_ENABLED=0` bắt buộc** cho `go test`/`golangci-lint`: máy có shim `cc` (`~/.local/bin/cc`) shadow compiler thật → build cgo (gopsutil của testcontainers) fail `unknown option '-E'`. Pure-Go thì chạy bình thường. Đã bake vào `make test`/`make lint`. Chạy `golangci-lint run` trần (thiếu CGO_ENABLED=0) sẽ báo typecheck fail giả.
 - **Go floor = 1.25** (testcontainers-go v0.43 yêu cầu; đã nâng từ mục tiêu 1.23 ban đầu vì đây là dep test cốt lõi). pgx theo đó lên v5.9.2. `GOTOOLCHAIN=local` dùng toolchain sẵn (1.26.x). CI (Task 7) phải setup-go ≥ 1.25.
-- Docker chạy trên **Colima** (không Docker Desktop). testcontainers tự resolve socket, không cần override.
+- Docker chạy trên **Colima** (không Docker Desktop). testcontainers trên Colima cần `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock` + `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (Ryuk reaper mới mount được socket) — đã bake vào `make test`. CI GitHub (socket chuẩn) KHÔNG cần. Lưu ý `/var/run/docker.sock` trên máy này trỏ Docker Desktop, nên chạy `go test` trần (không qua make) sẽ dính nhầm runtime hoặc fail.
 
 ## Design tokens (từ design/mooni-design-system.html)
 
