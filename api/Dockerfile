@@ -12,11 +12,14 @@ ENV GOTOOLCHAIN=local \
     GOOS=linux
 
 # Tải deps trước để tận dụng layer cache khi chỉ code đổi.
+# Cache mount /go/pkg/mod + /root/.cache/go-build → rebuild nhanh hơn nhiều.
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
-RUN go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 # distroless/static: image tối thiểu, không shell/package manager, chỉ CA certs.
