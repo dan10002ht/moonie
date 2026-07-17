@@ -129,7 +129,7 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-5-admin-ui.md`. Mỗi task UI
    - Files: web/app/admin/login + (shell)/{layout,page}, components/admin + ui (shadcn map tokens Mooni), actions/admin.ts (Server Action + cookie forward), lib/admin-api.ts, proxy.ts. Commit 8b80095 → f9e9345.
    - Gate: qa-evaluator held-out 5/5 (guard/login sai/đúng/auto-redirect/logout). design-evaluator 9/9/8/9 (đúng tokens Mooni navy-gold, không generic). Fix Playfair subset vietnamese.
    - Screenshots: docs/reports/screenshots/2026-07-17-admin-shell-eval/.
-2. [ ] Task 2 — Quản lý sản phẩm: table + form + upload ảnh (REQ-PROD-002/003 UI)
+2. [⏳] Task 2 — Quản lý sản phẩm: table + form + upload ảnh (REQ-PROD-002/003 UI)
 3. [ ] Task 3 — Quản lý leads: table phân trang + status + convert (REQ-LEAD-004/005 UI)
 4. [ ] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
 5. [ ] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
