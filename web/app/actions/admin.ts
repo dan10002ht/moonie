@@ -16,6 +16,13 @@ export type ProductInput = components["schemas"]["ProductInput"];
 /** Kết quả upload ảnh — schema `ImageUploadResult` sinh từ OpenAPI. */
 export type ImageUploadResult = components["schemas"]["ImageUploadResult"];
 
+/** Một lead — schema `Lead` sinh từ OpenAPI. */
+export type Lead = components["schemas"]["Lead"];
+/** Danh sách leads phân trang — schema `LeadList` sinh từ OpenAPI. */
+export type LeadList = components["schemas"]["LeadList"];
+/** Kết quả convert lead → đơn — schema `ConvertLeadResult` sinh từ OpenAPI. */
+export type ConvertLeadResult = components["schemas"]["ConvertLeadResult"];
+
 /**
  * Kết quả một thao tác ghi (tạo/sửa/upload). `ok:false` mang `message` lấy từ
  * body `{error}` của API (400 dữ liệu sai, 409 slug trùng…) để form hiện lỗi.
@@ -301,6 +308,68 @@ export async function uploadProductImage(
     // giữ message mặc định
   }
   return { ok: false, message };
+}
+
+/** Làm mới cache trang admin leads sau khi đổi status / convert. */
+function revalidateLeads(): void {
+  revalidatePath("/admin/leads");
+}
+
+/**
+ * Danh sách leads phân trang cho bảng quản trị (mới nhất trước). Gọi GET
+ * {API}/admin/leads?limit&offset kèm cookie phiên. Trả `{items, total}`. Ném
+ * `ApiError` (401) để caller xử lý.
+ */
+export async function listLeads(
+  limit: number,
+  offset: number,
+): Promise<LeadList> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return adminFetch<LeadList>(`/admin/leads?${params.toString()}`);
+}
+
+/**
+ * Đổi trạng thái lead. PATCH {API}/admin/leads/{id} body `{status}`. 200 → trả
+ * lead mới; 400 (status sai) / 404 → `ok:false` kèm message. Revalidate list.
+ */
+export async function updateLeadStatus(
+  id: string,
+  status: string,
+): Promise<ActionResult<Lead>> {
+  try {
+    const data = await adminFetch<Lead>(
+      `/admin/leads/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ status }) },
+    );
+    revalidateLeads();
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/**
+ * Convert lead thành đơn nháp. POST {API}/admin/leads/{id}/convert (không body).
+ * 201 → trả `{order_id, order_code}` (lead thành `converted`); 404 → không tìm
+ * thấy; 409 → đã convert trước đó. Revalidate list để lead hiện trạng thái mới.
+ */
+export async function convertLead(
+  id: string,
+): Promise<ActionResult<ConvertLeadResult>> {
+  try {
+    const data = await adminFetch<ConvertLeadResult>(
+      `/admin/leads/${encodeURIComponent(id)}/convert`,
+      { method: "POST" },
+    );
+    revalidateLeads();
+    revalidatePath("/admin/orders");
+    return { ok: true, data };
+  } catch (err) {
+    return toFailure(err);
+  }
 }
 
 /** Re-export cho caller phân biệt lỗi theo status khi cần. */
