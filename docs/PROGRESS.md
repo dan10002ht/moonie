@@ -12,13 +12,22 @@
 - [x] Harness: CLAUDE.md, 3 agents (qa-evaluator, design-evaluator, go-reviewer), settings, git
 - [x] Harness v2 (2026-07-17): BRIEF.md task loop + evaluator gate; pipeline test 6 bước (research verified: `docs/research/2026-07-17-per-task-testing.md`); held-out tests trong `tests/heldout/` do qa-evaluator sở hữu (generator bị cấm đọc); vòng lặp screenshot bắt buộc cho task UI (2 viewport, so với mockup, lưu `docs/reports/screenshots/`)
 - [x] Agent `ba-writer` (2026-07-17): duy trì tài liệu BA chính thống trong `docs/ba/` (BRD, SRS, FRS, data dictionary, traceability) — phái sinh từ spec/code, cập nhật cuối mỗi giai đoạn, phát hiện mâu thuẫn thì báo không tự xử
-- [ ] Plan triển khai chi tiết (skill writing-plans) — BƯỚC TIẾP THEO
-- [ ] Scaffold monorepo: web/ (Next.js) + api/ (Go) + docker-compose
-- [ ] API: schema + migrations + endpoints public (products, leads) + Telegram notify
-- [ ] Landing page từ mockup `design/mooni-landing.html`
-- [ ] Auth admin + API admin (orders, leads, products, customers)
-- [ ] Admin UI
-- [ ] Deploy VPS (Docker Compose + Caddy)
+- [x] Plan giai đoạn 1: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md`
+- [x] **Giai đoạn 1 — Scaffold (8/8 task) HOÀN THÀNH 2026-07-17**: monorepo web/ (Next.js 16 + Tailwind v4 tokens) + api/ (Go chi/pgx/sqlc, healthz, graceful shutdown) + docker-compose (Postgres:5440 Colima) + OpenAPI contract 2 phía (oapi-codegen + openapi-typescript) + migrations/sqlc + testcontainers + CI GitHub Actions + Dockerfile + skill run-moonie + seed admin. App chạy đầu-cuối thật.
+- [ ] **Giai đoạn 2 — API nghiệp vụ: products + leads + Telegram notify — BƯỚC TIẾP THEO**
+- [ ] Giai đoạn 3 — Landing page từ mockup `design/mooni-landing.html`
+- [ ] Giai đoạn 4 — Auth admin + API admin (orders, leads, products, customers)
+- [ ] Giai đoạn 5 — Admin UI
+- [ ] Giai đoạn 6 — Deploy VPS (Docker Compose + Caddy + backup) + security-review
+
+## Ghi chú kỹ thuật phát sinh (giai đoạn 1)
+
+- Docker: **Colima** (không Docker Desktop), Postgres host port **5440**. Dùng `make up/migrate/seed/gen/lint/test/check`.
+- **Go floor 1.25** (testcontainers-go v0.43 nâng từ 1.23), pgx v5.9.2.
+- **CGO_ENABLED=0 bắt buộc** local (shim `cc` phá cgo) — đã trong make. **testcontainers trên Colima** cần DOCKER_HOST+SOCKET_OVERRIDE — đã trong make test.
+- Admin seed mặc định: `admin@mooni.local` / `mooni-admin`.
+- CI chưa chạy GitHub thật (chưa có remote) — verified commands local. Cần tạo remote khi sẵn sàng.
+- Còn treo: migrate ticket-mcrsv sang Colima + tắt Docker Desktop (side-quest, chờ sau).
 
 ## Quyết định đã chốt (không mở lại nếu không có lý do mới)
 
