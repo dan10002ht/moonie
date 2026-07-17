@@ -112,12 +112,23 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
 6. [✅] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
    - Files: cmd/server/admin_customers.go (CRUD + validate name/type/phone/email/MaxLen), main.go ErrorHandlerFunc chuẩn hóa lỗi param JSON toàn API. Commit 498255d → 5d5497a.
    - Gate: HELD-OUT PASS (phân trang {items,total}, CRUD, validate 400 trước DB, không leak log). go-reviewer PASS → fix param bind error → JSON {error} toàn API (finding minor). phone/email không unique = chủ đích spec.
-7. [⏳] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
+7. [✅] Task 7 — Admin dashboard + security-review (REQ-DASH-001)
+   - Dashboard: GET /admin/dashboard (new_leads/processing_orders/revenue_this_month, doanh thu giờ VN). Held-out PASS (delta + biên tháng + lọc status). Commit f904bea.
+   - Security-review TỔNG admin/auth: KHÔNG có HIGH/CRITICAL. Bảng endpoint xác nhận không sót auth; JWT/upload/overflow/injection/info-leak đều đạt. Fix M1: rate-limit POST /auth/login 10/phút chống brute-force. Commit 0499b98.
+   - MEDIUM/LOW → deploy-gate GĐ6 (task 0b): đổi mật khẩu admin mặc định (bắt buộc), HTTPS/HSTS/Secure cookie, security headers, CSRF defense-in-depth, real-IP sau proxy.
+
+### ✅ GIAI ĐOẠN 4 HOÀN THÀNH (7/7) — 2026-07-17
+Backend admin đầy đủ: đăng nhập JWT + quản lý sản phẩm(upload ảnh)/leads(convert)/đơn hàng(transaction+snapshot)/khách hàng/dashboard doanh thu. Mọi task qua held-out + go-reviewer; security-review tổng không HIGH/CRITICAL. Verify độc lập cứu nhiều lỗi thật: race convert, data-corruption tiền, doanh thu lệch múi giờ, footgun JWT secret, brute-force login.
    - security-review scope thêm (từ go-reviewer Task 2): (a) CSRF cho admin mutations POST/PUT/DELETE (SameSite=Lax hiện đủ cho form cross-site nhưng cân nhắc double-submit/Origin check khi có mutation); (b) quy ước "mọi route cần auth phải dưới /api/v1/admin/*" — kiểm không route mutation nào đặt ngoài prefix mà quên bảo vệ.
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
-0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch. (Cân nhắc: hoặc browser gọi /api same-origin qua Caddy thay vì Server Action.)
+0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch.
+0b. [ ] **Security deploy-gate GĐ6** (từ security-review tổng GĐ4 — MEDIUM/LOW, không chặn đóng GĐ4):
+   - BẮT BUỘC trước production: đổi mật khẩu admin mặc định (đặt SEED_ADMIN_PASSWORD, không dùng 'mooni-admin') — nếu bỏ qua, brute-force login thành CRITICAL.
+   - APP_ENV=production để cookie Secure=true; reverse proxy ép HTTPS + HSTS (M2).
+   - Header bảo mật toàn cục API (CSP/X-Frame-Options/Referrer-Policy — L6); nosniff mới chỉ ở /uploads.
+   - (defense-in-depth) Origin/Referer check hoặc double-submit CSRF cho mutation admin, hoặc SameSite=Strict cookie admin (L4). JWT TTL ngắn hơn / token version thu hồi (L3).
 1. [ ] Viết runbook vận hành `docs/runbook.md`: deploy lên VPS, rollback về bản trước, restore backup Postgres, xem log khi sự cố. DoD: từng mục có lệnh cụ thể đã chạy thử thật ít nhất 1 lần (kể cả restore). Kèm 2 mốc security-review bắt buộc theo CLAUDE.md.
 
 ## Backlog ý tưởng (chưa thành task)
