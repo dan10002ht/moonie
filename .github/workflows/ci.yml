@@ -31,11 +31,13 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      # Cài + chạy golangci-lint trực tiếp (không dùng golangci-lint-action@v6 —
+      # action v6 dành cho golangci-lint v1, xử lý sai config schema v2 dù pin version v2).
+      # Chạy y hệt `make lint` local (CGO_ENABLED=0 đã ở env job) để CI khớp local 1:1.
+      - name: Install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v2.12.2
-          working-directory: api
+        run: $(go env GOPATH)/bin/golangci-lint run
 
       - name: go test
         run: go test ./... -count=1
