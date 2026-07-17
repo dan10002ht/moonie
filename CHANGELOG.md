@@ -27,3 +27,6 @@
 - **Task 3** — Landing product & content sections (bộ sưu tập 3 hộp + 4 bánh lẻ từ GET /products, quà DN, câu chuyện, testimonials). Thêm product model: `badge`, `compare_at_price` (giá KM), `subtitle` (nhãn loại) — migration 0005. design-evaluator PASS 9/9/9/9. Commit `1c5a81b`, `8297aaf`.
 - **Task 4** — Contact bottom sheet + form đặt hàng → POST /leads (qua Next Server Action) + kênh nhanh Zalo/Messenger/Gọi. Mở/đóng X/backdrop/Escape, xử lý 400/429. qa-evaluator held-out 9/9 + design-evaluator 9/9/9/9. Commit `c99b4ea`.
 - **🎉 Giai đoạn 3 (Landing) hoàn thành 4/4** — website có trang chủ hoàn chỉnh khớp mockup, khách đặt hàng qua form → admin + Telegram.
+
+### Giai đoạn 4 — Admin API
+- **Task 1** — Schema `customers`/`orders`/`order_items` + `leads.order_id` + sqlc (CRUD, phân trang tie-break, dashboard). Fix flaky testcontainers + bug doanh thu lệch múi giờ (neo giờ VN). Commit `4f0eb84`, `7de3515`, `2f0b771`.

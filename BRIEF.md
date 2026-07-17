@@ -93,8 +93,10 @@ Landing hoàn chỉnh khớp mockup: header/hero/trust/collection(3 hộp)/corpo
 
 Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API → qa-evaluator held-out trước, generator không đọc. security-review cuối GĐ.
 
-1. [ ] Task 1 — Migrations customers/orders/order_items + leads.order_id + sqlc (REQ-CUST/ORD/LEAD schema)
-2. [ ] Task 2 — Auth: login JWT httpOnly + middleware + proxy guard (REQ-AUTH-001/002/003/004)
+1. [✅] Task 1 — Migrations customers/orders/order_items + leads.order_id + sqlc (REQ-CUST/ORD/LEAD schema)
+   - Files: migration 0006_customers, 0007_orders (orders+order_items+leads.order_id, CHECK tiền≥0), query.sql (+16 method: CRUD + pagination tie-break + dashboard), orders_test.go (transaction/snapshot/timezone). Commit 4f0eb84 → 7de3515 → 2f0b771.
+   - Gate: go-reviewer PASS. Verify độc lập bắt: (a) test flaky wait-strategy + ordering không xác định → sửa; (b) bug doanh thu lệch UTC vs giờ VN → sửa neo Asia/Ho_Chi_Minh + test fail-trước-sửa. Pagination tie-break (created_at DESC, id) đúng. Snapshot giá đạt REQ-ORD-004.
+2. [⏳] Task 2 — Auth: login JWT httpOnly + middleware + proxy guard (REQ-AUTH-001/002/003/004)
 3. [ ] Task 3 — Admin products CRUD + upload ảnh (REQ-PROD-002/003)
 4. [ ] Task 4 — Admin leads list paginated + status + convert→order (REQ-LEAD-004/005)
 5. [ ] Task 5 — Admin orders create(transaction+snapshot) + list + status + Telegram (REQ-ORD, REQ-NOTI-002)
