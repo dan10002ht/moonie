@@ -10,6 +10,7 @@
 - [x] Brainstorm + chốt thiết kế với chủ dự án
 - [x] Spec: `docs/superpowers/specs/2026-07-17-mooni-website-design.md`
 - [x] Harness: CLAUDE.md, 3 agents (qa-evaluator, design-evaluator, go-reviewer), settings, git
+- [x] Harness v2 (2026-07-17): BRIEF.md task loop + evaluator gate; pipeline test 6 bước (research verified: `docs/research/2026-07-17-per-task-testing.md`); held-out tests trong `tests/heldout/` do qa-evaluator sở hữu (generator bị cấm đọc); vòng lặp screenshot bắt buộc cho task UI (2 viewport, so với mockup, lưu `docs/reports/screenshots/`)
 - [ ] Plan triển khai chi tiết (skill writing-plans) — BƯỚC TIẾP THEO
 - [ ] Scaffold monorepo: web/ (Next.js) + api/ (Go) + docker-compose
 - [ ] API: schema + migrations + endpoints public (products, leads) + Telegram notify
