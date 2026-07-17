@@ -76,8 +76,11 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI:
    - Files: web/components/landing/ (AnnouncementBar, Header, MobileMenu, Hero, TrustStrip, Footer, StickyMobileCTA, icons), globals.css +20 token, app/page.tsx compose. Commit bfbbc00.
    - Gate: design-evaluator PASS — Design 9/Originality 9/Craft 8/Functionality 9 (NFR-010 ≥8 đạt). Khớp mockup cao, giữ cá tính navy-gold-serif, không AI-slop. Minor không chặn: menu mobile overlay vs in-flow (thị giác tương đương).
    - Screenshots: docs/reports/screenshots/2026-07-17-ld-frame-eval/.
-3. [⏳] Task 3 — product & content sections, wire GET /products (REQ-LAND-001/002)
-4. [ ] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
+3. [✅] Task 3 — product & content sections, wire GET /products (REQ-LAND-001/002)
+   - Files: web/components/landing/{Collection,Flavors,product-card,CorporateGifting,Craft,Testimonials}.tsx, lib/format.ts. + migration 0005 (compare_at_price + subtitle), openapi/seed/handler cho 2 field mới. Commit 1c5a81b → 8297aaf.
+   - Product model bổ sung theo quyết định chủ dự án: badge (Bán chạy/Mới/Quà biếu), compare_at_price (giá KM gạch + %), subtitle (nhãn loại). Seed khớp mockup.
+   - Gate: design-evaluator PASS 9/9/9/9 (NFR-010). Held-out products vẫn PASS sau thêm field.
+4. [⏳] Task 4 — contact bottom sheet + form → POST /leads (REQ-LAND-003/004)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
@@ -87,3 +90,4 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-3-landing.md`. Mỗi task UI:
 
 - Trang admin cần thống kê doanh thu theo tháng
 - Xuất danh sách đơn ra Excel/CSV cho kế toán
+- Trạng thái sản phẩm "Sắp hết" (low_stock, amber) — mockup có, enum hiện chỉ available/sold_out/hidden. Thêm khi làm admin product management (GĐ4-5): mở rộng CHECK status + badge amber + landing render.
