@@ -141,6 +141,13 @@ func TestCreateProductValidation(t *testing.T) {
 		{"giá âm", `{"slug":"s","name":"A","price":-5,"type":"gift_box","status":"available"}`},
 		{"type sai", `{"slug":"s","name":"A","price":1,"type":"cookie","status":"available"}`},
 		{"status sai", `{"slug":"s","name":"A","price":1,"type":"gift_box","status":"deleted"}`},
+		{"slug có ký tự lạ", `{"slug":"bad/slug","name":"A","price":1,"type":"gift_box","status":"available"}`},
+		{"slug hoa/khoảng trắng", `{"slug":"Bad Slug","name":"A","price":1,"type":"gift_box","status":"available"}`},
+		{"slug traversal", `{"slug":"../x","name":"A","price":1,"type":"gift_box","status":"available"}`},
+		{"display_order tràn int32", `{"slug":"s","name":"A","price":1,"type":"gift_box","status":"available","display_order":9999999999}`},
+		{"display_order âm", `{"slug":"s","name":"A","price":1,"type":"gift_box","status":"available","display_order":-1}`},
+		{"image_url javascript", `{"slug":"s","name":"A","price":1,"type":"gift_box","status":"available","image_url":"javascript:alert(1)"}`},
+		{"image_url data uri", `{"slug":"s","name":"A","price":1,"type":"gift_box","status":"available","image_url":"data:text/html,<script>1</script>"}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,6 +159,50 @@ func TestCreateProductValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCreateProductAcceptsValidImageURLs: image_url /uploads/... và http(s) hợp lệ → 201.
+func TestCreateProductAcceptsValidImageURLs(t *testing.T) {
+	for _, img := range []string{"/uploads/abc.png", "https://cdn.mooni.test/x.jpg", "http://example.com/y.webp"} {
+		t.Run(img, func(t *testing.T) {
+			srv := &Server{productAdmin: &fakeProductAdmin{}}
+			body := `{"slug":"ok-slug","name":"A","price":1,"type":"gift_box","status":"available","image_url":"` + img + `"}`
+			rec := httptest.NewRecorder()
+			srv.CreateProduct(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(body)))
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("code = %d, want 201 (body=%s)", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// TestUploadsStaticServe: qua router thật — GET file có → 200 + nosniff header;
+// GET thư mục /uploads/ → 404 (directory listing bị tắt).
+func TestUploadsStaticServe(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "img.png"), pngBytes(), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, dir)
+
+	t.Run("file cụ thể → 200 + nosniff", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/uploads/img.png", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("code = %d, want 200", rec.Code)
+		}
+		if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
+		}
+	})
+
+	t.Run("thư mục /uploads/ → 404 (không listing)", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/uploads/", nil))
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("code = %d, want 404 (directory listing phải bị tắt)", rec.Code)
+		}
+	})
 }
 
 // TestCreateProductSlugConflict: slug trùng (unique violation) → 409.

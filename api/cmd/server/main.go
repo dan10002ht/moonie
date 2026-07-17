@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -150,12 +151,48 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 	// Serve tĩnh ảnh sản phẩm tại GET /uploads/* — PUBLIC (không auth) để landing
 	// hiển thị ảnh. Đặt NGOÀI prefix /api/v1/admin nên middleware auth không gác.
 	// http.FileServer + http.Dir tự làm sạch path (chống traversal ../) (REQ-PROD-003).
-	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir)))
-	r.Handle("/uploads/*", fileServer)
+	// noDirFS tắt directory listing (GET /uploads/ → 404, không lộ danh sách file);
+	// nosniffUploads gắn X-Content-Type-Options: nosniff (chống MIME-sniff → stored-XSS).
+	fileServer := http.StripPrefix("/uploads", http.FileServer(noDirFS{fs: http.Dir(uploadsDir)}))
+	r.Handle("/uploads/*", nosniffUploads(fileServer))
 
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r
+}
+
+// noDirFS bọc một http.FileSystem để TẮT directory listing: Open trả lỗi
+// os.ErrNotExist khi path là thư mục → http.FileServer phản hồi 404 thay vì liệt
+// kê file. Chỉ cho phép GET file cụ thể (không lộ danh sách ảnh trong uploads/).
+type noDirFS struct{ fs http.FileSystem }
+
+// Open mở file; nếu là thư mục thì từ chối (404). Giữ nguyên chống-traversal của
+// http.Dir bên dưới.
+func (n noDirFS) Open(name string) (http.File, error) {
+	f, err := n.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		_ = f.Close()
+		return nil, os.ErrNotExist
+	}
+	return f, nil
+}
+
+// nosniffUploads gắn header X-Content-Type-Options: nosniff cho mọi phản hồi
+// /uploads/* trước khi FileServer chạy — chặn trình duyệt MIME-sniff nội dung
+// upload thành HTML/JS (defense-in-depth chống stored-XSS khi landing hiển thị ảnh).
+func nosniffUploads(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // adminPathPrefix là tiền tố URL của mọi route admin cần auth (REQ-AUTH-002).

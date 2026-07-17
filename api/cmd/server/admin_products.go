@@ -6,10 +6,14 @@ import (
 	"errors"
 	"io"
 	"log"
+	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -44,6 +48,18 @@ type productAdminStore interface {
 // (0002_products). Validate ở handler để trả 400 thân thiện thay vì 500 từ DB.
 var validProductTypes = map[string]bool{"gift_box": true, "single_cake": true}
 var validProductStatuses = map[string]bool{"available": true, "sold_out": true, "hidden": true}
+
+// slugPattern: slug chỉ gồm chữ thường, số, phân tách bằng dấu '-' (không đầu/cuối,
+// không liên tiếp). Chặn "bad/slug", "../x", khoảng trắng… phá URL/SEO landing.
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// Giới hạn độ dài các trường tự do (NFR-004, chống payload rác + vỡ layout landing).
+const (
+	descriptionMaxLen = 2000
+	badgeMaxLen       = 50
+	subtitleMaxLen    = 50
+	imageURLMaxLen    = 500
+)
 
 // ListAdminProducts phục vụ GET /api/v1/admin/products → 200 JSON array TẤT CẢ sản
 // phẩm kể cả hidden, thứ tự tất định (REQ-PROD-002). Cần auth (middleware gác).
@@ -256,11 +272,19 @@ func decodeProductInput(w http.ResponseWriter, r *http.Request) (api.ProductInpu
 // validateProductInput kiểm tra các ràng buộc nghiệp vụ (REQ-PROD-002, NFR-004).
 // Trả (thông điệp, false) khi không hợp lệ.
 func validateProductInput(in api.ProductInput) (string, bool) {
-	if strings.TrimSpace(in.Name) == "" {
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
 		return "vui lòng nhập tên sản phẩm", false
 	}
-	if strings.TrimSpace(in.Slug) == "" {
+	if utf8.RuneCountInString(name) > nameMaxLen {
+		return "tên sản phẩm quá dài", false
+	}
+	slug := strings.TrimSpace(in.Slug)
+	if slug == "" {
 		return "vui lòng nhập slug", false
+	}
+	if !slugPattern.MatchString(slug) {
+		return "slug chỉ gồm chữ thường, số và dấu gạch ngang", false
 	}
 	if in.Price < 0 {
 		return "giá không được âm", false
@@ -274,7 +298,43 @@ func validateProductInput(in api.ProductInput) (string, bool) {
 	if in.CompareAtPrice != nil && *in.CompareAtPrice < 0 {
 		return "giá so sánh không được âm", false
 	}
+	// display_order phải nằm trong [0, MaxInt32] — tránh tràn khi ép về int32 cho DB.
+	if in.DisplayOrder != nil && (*in.DisplayOrder < 0 || *in.DisplayOrder > math.MaxInt32) {
+		return "thứ tự hiển thị không hợp lệ", false
+	}
+	if in.Description != nil && utf8.RuneCountInString(*in.Description) > descriptionMaxLen {
+		return "mô tả quá dài", false
+	}
+	if in.Badge != nil && utf8.RuneCountInString(*in.Badge) > badgeMaxLen {
+		return "nhãn (badge) quá dài", false
+	}
+	if in.Subtitle != nil && utf8.RuneCountInString(*in.Subtitle) > subtitleMaxLen {
+		return "phụ đề quá dài", false
+	}
+	if in.ImageUrl != nil && !validImageURL(*in.ImageUrl) {
+		return "đường dẫn ảnh không hợp lệ (chỉ chấp nhận /uploads/... hoặc URL http(s))", false
+	}
 	return "", true
+}
+
+// validImageURL chấp nhận: rỗng (không đặt), đường dẫn nội bộ "/uploads/...", hoặc
+// URL http(s) có host. Chặn scheme nguy hiểm (javascript:, data:) → phòng
+// stored-XSS khi landing render ảnh (defense-in-depth).
+func validImageURL(s string) bool {
+	if s == "" {
+		return true
+	}
+	if utf8.RuneCountInString(s) > imageURLMaxLen {
+		return false
+	}
+	if strings.HasPrefix(s, "/uploads/") {
+		return true
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 // imageExtFor map content-type ảnh được phép → đuôi file. "" nếu loại không hỗ trợ.
