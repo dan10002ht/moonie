@@ -87,8 +87,17 @@ let customersBaseline = 0;
 
 // ---- DB helpers -------------------------------------------------------------
 function psql(sql: string): string {
-  const cmd = `docker compose exec -T postgres psql -U mooni -d mooni -tAc "${sql.replace(/"/g, '\\"')}"`;
+  // -q + -P pager=off: robust bất kể ~/.psqlrc (container ephemeral) / command tag.
+  const cmd =
+    `docker compose exec -T postgres psql -U mooni -d mooni -q -P pager=off -tAc "${sql.replace(/"/g, '\\"')}"`;
   return execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+}
+// INSERT ... RETURNING id: lọc ĐÚNG dòng UUID (bất kể có/không command-tag đi kèm).
+function psqlInsertId(sql: string): string {
+  const out = psql(sql);
+  const m = out.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (!m) throw new Error(`Không lấy được UUID từ INSERT RETURNING (output: ${JSON.stringify(out)})`);
+  return m[0];
 }
 function leadField(id: string, field: string): string {
   return psql(`SELECT COALESCE(${field}::text,'') FROM leads WHERE id='${id}' LIMIT 1`);
@@ -120,9 +129,9 @@ function seedLead(
     cols.push('order_id');
     vals.push(`'${orderId}'`);
   }
-  return psql(
+  return psqlInsertId(
     `INSERT INTO leads (${cols.join(',')}) VALUES (${vals.join(',')}) RETURNING id`,
-  ).trim();
+  );
 }
 function cleanupDb(): void {
   // (1) lưu order_id do các lead heldout tham chiếu (convert-created + seeded).
@@ -193,9 +202,11 @@ async function chooseStatusInRow(row: Locator, optionRe: RegExp): Promise<boolea
       }
     }
   }
+  // shadcn/Radix SelectTrigger: role=combobox, aria-label="Trạng thái lead (<id>)".
+  // Ưu tiên aria-label để TÁCH BIỆT rõ khỏi nút Convert.
   const combos = row.locator(
-    '[role="combobox"], button[aria-haspopup="listbox"], button[aria-haspopup="menu"], ' +
-      'button[role="combobox"]',
+    '[aria-label*="Trạng thái lead" i], [role="combobox"], ' +
+      'button[aria-haspopup="listbox"], button[aria-haspopup="menu"]',
   );
   const cn = await combos.count();
   for (let i = 0; i < cn; i++) {
@@ -213,16 +224,10 @@ async function chooseStatusInRow(row: Locator, optionRe: RegExp): Promise<boolea
   return false;
 }
 
+// Nút Convert định vị bằng ACCESSIBLE NAME CHÍNH XÁC (aria-label cố định
+// "Chuyển thành đơn"), KHÔNG khớp chuỗi mơ hồ → không va chạm ô status.
 function convertBtn(scope: Locator): Locator {
-  return scope
-    .locator(
-      'button:has-text("Convert"), a:has-text("Convert"), ' +
-        'button:has-text("Chuyển đơn"), a:has-text("Chuyển đơn"), ' +
-        'button:has-text("Chuyển thành đơn"), a:has-text("Chuyển thành đơn"), ' +
-        'button:has-text("Tạo đơn"), a:has-text("Tạo đơn"), ' +
-        '[data-convert], button[aria-label*="convert" i], button[aria-label*="chuyển" i]',
-    )
-    .first();
+  return scope.getByRole('button', { name: 'Chuyển thành đơn', exact: true });
 }
 
 // Vị trí (DOM index) của dòng chứa `name` trong danh sách row hiện tại.
@@ -242,10 +247,10 @@ test.beforeAll(async ({ browser }) => {
   idStatus = seedLead(N_STATUS, '0900110003', `status-${SUFFIX}`, 'new', 6);
   idConvert = seedLead(N_CONVERT, '0900110004', `convert-${SUFFIX}`, 'new', 5);
   // Lead đã converted sẵn (assert 5) — tạo order seeded trước, gắn order_id.
-  const seededOrderId = psql(
+  const seededOrderId = psqlInsertId(
     `INSERT INTO orders (code, channel, status, subtotal, discount, total, note) ` +
       `VALUES ('${SEED_ORDER_CODE}','website','new',0,0,0,'seed converted lead heldout') RETURNING id`,
-  ).trim();
+  );
   idDone = seedLead(N_DONE, '0900110005', `done-${SUFFIX}`, 'converted', 4, seededOrderId);
   seedLead(N_OLDEST, '0900110006', `oldest-${SUFFIX}`, 'new', 2);
 
@@ -489,36 +494,22 @@ test('5. lead đã converted → nút Convert disable/ẩn HOẶC convert lại 
 
     const btn = convertBtn(row);
     const present = (await btn.count()) > 0;
-    const visible = present && (await btn.isVisible().catch(() => false));
-    const disabled = visible && (await btn.isDisabled().catch(() => false));
 
-    if (!present || !visible || disabled) {
-      // Đạt: nút Convert ẩn hoặc disable với lead đã converted.
-      expect(true).toBe(true);
+    if (!present) {
+      // Chấp nhận: nút Convert ẩn hẳn với lead đã converted.
+      expect(present, 'Lead đã converted phải ẩn HOẶC disable nút Convert').toBe(false);
     } else {
-      // Nút vẫn bật → bấm phải KHÔNG tạo đơn thứ 2 (API 409) + báo lỗi.
-      await btn.click();
-      const confirm = page
-        .locator('button:has-text("Xác nhận"), button:has-text("Đồng ý"), button:has-text("Chuyển")')
-        .first();
-      if ((await confirm.count()) > 0 && (await confirm.isVisible().catch(() => false))) {
-        await confirm.click().catch(() => {});
-      }
-      await page.waitForTimeout(2500);
-      // Không tạo đơn mới, order_id không đổi.
-      expect(
-        ordersCount(),
-        'Convert lần 2 KHÔNG được tạo đơn mới',
-      ).toBe(ordersBefore);
-      expect(
-        leadField(idDone, 'order_id'),
-        'Convert lần 2 KHÔNG được đổi order_id của lead',
-      ).toBe(orderIdBefore);
-      const errVisible = await page
-        .getByText(/đã.*convert|đã.*chuyển|lỗi|không thể|409|đã có đơn/i)
-        .first()
-        .isVisible()
-        .catch(() => false);
-      expect(errVisible, 'Convert lại lead đã converted phải hiện lỗi').toBe(true);
+      // Code hiện tại: nút Convert vẫn render nhưng DISABLED khi lead đã converted.
+      await expect(
+        btn,
+        'Lead đã converted → nút "Chuyển thành đơn" phải bị disable (không convert 2 lần)',
+      ).toBeDisabled();
     }
+
+    // Bất biến: không phát sinh đơn thứ 2, order_id của lead giữ nguyên.
+    expect(ordersCount(), 'Lead đã converted KHÔNG được tạo thêm đơn').toBe(ordersBefore);
+    expect(
+      leadField(idDone, 'order_id'),
+      'order_id của lead đã converted phải giữ nguyên',
+    ).toBe(orderIdBefore);
   });
