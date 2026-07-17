@@ -135,8 +135,10 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-5-admin-ui.md`. Mỗi task UI
 3. [✅] Task 3 — Quản lý leads: table phân trang + status + convert (REQ-LEAD-004/005 UI)
    - Files: web/app/admin/(shell)/leads/page.tsx, components/admin/leads-manager.tsx, lib/lead-labels.ts. Commit 1a145c7 → cb74f38.
    - Gate: held-out 6/6 (sau làm rõ nhãn convert "Chuyển thành đơn" vs status "Đã lên đơn" — UX thật + held-out selector chắc hơn). design-evaluator 9/9/8/10. Backlog: mobile table card layout (chung mọi trang admin).
-4. [⏳] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
-5. [ ] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
+4. [✅] Task 4 — Quản lý đơn hàng: table + tạo đơn + chi tiết + status (REQ-ORD UI)
+   - Files: web/app/admin/(shell)/orders/page.tsx, components/admin/{orders-manager,order-form-dialog,order-detail}.tsx, lib/order-labels.ts. Commit 6bf9c20 → 2136049.
+   - Gate: held-out 7/7 (tạo đơn nhiều dòng + snapshot + total, chi tiết, status, terminal guard, validate) + xác nhận độc lập API. design-evaluator 9/8/8/9 → fix overflow bảng chi tiết mobile. Qua thẳng không cần sửa code chính (generator rút kinh nghiệm).
+5. [⏳] Task 5 — Quản lý khách hàng: table + form (REQ-CUST-001 UI)
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
