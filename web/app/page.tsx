@@ -1,40 +1,37 @@
+import { AnnouncementBar } from "@/components/landing/AnnouncementBar";
+import { Footer } from "@/components/landing/Footer";
+import { Header } from "@/components/landing/Header";
+import { Hero } from "@/components/landing/Hero";
+import { StickyMobileCTA } from "@/components/landing/StickyMobileCTA";
+import { TrustStrip } from "@/components/landing/TrustStrip";
+
 /**
- * Placeholder scaffold (giai đoạn 1) — chỉ để chứng minh design tokens hoạt động.
- * KHÔNG phải landing thật; landing đầy đủ dựng ở giai đoạn 3 (REQ-LAND).
+ * Landing Mooni Cake — Server Component compose các section theo mockup
+ * design/mooni-landing.html. Task 2 (giai đoạn 3): khung — announcement,
+ * header, hero, trust, footer, sticky CTA.
  */
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-cream px-6 py-24">
-      <div className="w-full max-w-2xl rounded-2xl border border-border bg-white/60 p-10 shadow-sm">
-        <p className="font-sans text-sm font-semibold uppercase tracking-[0.2em] text-gold-deep">
-          Mooni Cake
-        </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold text-navy sm:text-5xl">
-          Bánh trung thu cao cấp
-        </h1>
-        <p className="mt-4 font-sans text-base text-ink">
-          Trang scaffold xác nhận design tokens Mooni đã hoạt động: nền cream,
-          tiêu đề serif tông navy, điểm nhấn gold.
-        </p>
+    <>
+      {/* r-padbottom: chừa chỗ cho sticky CTA ở ≤720px */}
+      <div className="bg-cream max-[720px]:pb-[88px]">
+        <AnnouncementBar />
+        <Header />
 
-        <div className="mt-8 flex flex-wrap gap-3" aria-hidden="true">
-          <span className="h-10 w-10 rounded-full bg-navy" title="navy" />
-          <span className="h-10 w-10 rounded-full bg-navy-light" title="navy-light" />
-          <span className="h-10 w-10 rounded-full bg-gold" title="gold" />
-          <span className="h-10 w-10 rounded-full bg-gold-deep" title="gold-deep" />
-          <span className="h-10 w-10 rounded-full border border-border bg-cream" title="cream" />
-          <span className="h-10 w-10 rounded-full bg-ink" title="ink" />
-        </div>
+        <main>
+          <Hero />
+          <TrustStrip />
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <span className="rounded-full bg-navy px-5 py-2 font-sans text-sm font-medium text-cream">
-            Nút chính (navy)
-          </span>
-          <span className="rounded-full border border-gold px-5 py-2 font-sans text-sm font-medium text-gold-deep">
-            Điểm nhấn (gold)
-          </span>
-        </div>
+          {/* TODO(Task 3): Collection · Corporate · Craft/Story · Flavors · Testimonials */}
+          {/* TODO(Task 4): Contact section + lead form */}
+
+          <Footer />
+        </main>
       </div>
-    </main>
+
+      <StickyMobileCTA />
+
+      {/* TODO(Task 4): ContactSheet — bottom sheet liên hệ toàn cục */}
+    </>
   );
 }

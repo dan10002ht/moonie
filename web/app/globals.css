@@ -10,6 +10,27 @@
   --color-cream: #f7f6f4;
   --color-ink: #22201b;
   --color-border: #e6e4de;
+
+  /* Bổ sung cho landing (port từ design/mooni-landing.html) */
+  --color-navy-tint: #eef1f7; /* nền icon, section liên hệ */
+  --color-steel: #2a3557; /* nút chính, accent */
+  --color-steel-dark: #1e2947; /* hover nút chính */
+  --color-sky: #eaeff9; /* chữ announcement, nút sáng trên nền navy */
+  --color-ink-nav: #33302a; /* link nav */
+  --color-ink-muted: #4c483f; /* body phụ */
+  --color-ink-soft: #6e695e; /* mô tả card */
+  --color-ink-faint: #918c81; /* label mờ */
+  --color-border-strong: #d6d2ca; /* viền card / input */
+  --color-border-soft: #eae8e2; /* divider mobile menu */
+  --color-sale: #c43d3d; /* badge giảm giá */
+  --color-check: #8fb8a0; /* dấu tick xanh trên hero */
+  --color-navy-fog: #d3daea; /* đoạn văn trên nền navy */
+  --color-navy-mist: #c3cadb; /* text phụ trên nền navy / link footer */
+  --color-footer-text: #8fa0c4;
+  --color-footer-italic: #7c88a6;
+  --color-footer-border: #35507f;
+  --color-footer-divider: #12305f;
+  --color-footer-copy: #5e739c;
 }
 
 /* Font variables được cấp qua next/font/google trong app/layout.tsx. */
