@@ -1,6 +1,6 @@
 # 05 — Traceability Matrix — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `51d60a1`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
 > ⚠️ **Cột Task và Test đang trống có chủ đích**: BRIEF.md chưa có task (chờ writing-plans giai đoạn 1), `tests/heldout/` chưa tồn tại. Điền dần khi task đổ vào BRIEF.md và qa-evaluator viết held-out tests.
 > Cột "GĐ": bước triển khai dự kiến theo spec §8 (1 Scaffold · 2 API nền · 3 Landing · 4 Auth+API admin · 5 Admin UI · 6 Deploy).
@@ -20,7 +20,7 @@
 | REQ-LEAD-002 | §1, §3 | 2 | — | — | Chưa triển khai |
 | REQ-LEAD-003 | §3 | 2, 4 | — | — | Chưa triển khai |
 | REQ-LEAD-004 | §4 | 4–5 | — | — | Chưa triển khai |
-| REQ-LEAD-005 | §3, §4 | 4–5 | — | — | Chưa triển khai |
+| REQ-LEAD-005 | §1, §3, §4 | 4–5 | — | — | Chưa triển khai |
 | REQ-ORD-001 | §1, §3, §4 | 4–5 | — | — | Chưa triển khai |
 | REQ-ORD-002 | §3, §4 | 4–5 | — | — | Chưa triển khai |
 | REQ-ORD-003 | §3 | 4 | — | — | Chưa triển khai |
@@ -31,7 +31,7 @@
 | REQ-AUTH-003 | §6 | 4 | — | — | Chưa triển khai |
 | REQ-AUTH-004 | §2; CLAUDE.md | 4–5 | — | — | Chưa triển khai |
 | REQ-NOTI-001 | §1, §2 | 2 | — | — | Chưa triển khai |
-| REQ-NOTI-002 | §2 | 2 | — | — | ⚠️ Treo xác nhận (SRS mâu thuẫn #1) |
+| REQ-NOTI-002 | §1, §2 | 2 | — | — | Chưa triển khai (hết treo — chốt 2026-07-17) |
 | REQ-DASH-001 | §1, §4 | 4–5 | — | — | Chưa triển khai |
 | REQ-ADM-001 | §5; CLAUDE.md | 5 | — | — | Chưa triển khai |
 

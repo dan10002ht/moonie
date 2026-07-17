@@ -1,6 +1,6 @@
 # 01 — BRD: Business Requirements Document — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `51d60a1`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
 > Nguồn chính: `docs/superpowers/specs/2026-07-17-mooni-website-design.md` (spec đã duyệt), `docs/PROGRESS.md`, `CLAUDE.md`.
 
@@ -24,8 +24,8 @@ Ràng buộc mùa vụ: Trung thu 2026 rơi vào khoảng cuối tháng 9 — we
 | Hạng mục | Mô tả |
 |---|---|
 | Landing public | Dựng 1:1 từ mockup: announcement bar, header, hero, trust strip, bộ sưu tập hộp quà (Nguyệt Quang Kim, Vọng Nguyệt, Thỏ Ngọc), quà doanh nghiệp, câu chuyện (craft/story), bánh lẻ, testimonials, form liên hệ, footer, bottom sheet liên hệ, sticky CTA mobile |
-| Đặt hàng qua lead form | Khách để lại thông tin → hệ thống lưu DB + thông báo Telegram |
-| Admin `/admin` | Đơn hàng (nhập tay + convert từ lead), leads, sản phẩm & tồn kho, khách hàng, dashboard doanh thu |
+| Đặt hàng qua lead form | Khách để lại thông tin → hệ thống lưu DB + thông báo Telegram. Thông báo Telegram bắn cho cả lead mới lẫn đơn mới, kể cả đơn tạo trong admin (chốt 2026-07-17, spec §1) |
+| Admin `/admin` | Đơn hàng (nhập tay + convert từ lead), leads, sản phẩm & tồn kho (tồn kho = trạng thái còn/hết hàng, không đếm số lượng — chốt 2026-07-17, spec §1), khách hàng, dashboard doanh thu |
 | Hạ tầng | VPS + Docker Compose, Caddy auto HTTPS, backup Postgres hàng ngày, CI GitHub Actions |
 
 ### 3.2 Ngoài phạm vi + lý do (spec §1, PROGRESS.md "Quyết định đã chốt")

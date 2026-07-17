@@ -1,6 +1,6 @@
 # 04 — Data Dictionary — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `51d60a1`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
 > ⚠️ **Sinh từ mục Database (spec §3) — `api/migrations/` CHƯA tồn tại. Sẽ đối chiếu lại với migrations thật khi code.** Kiểu dữ liệu cụ thể (varchar/numeric/timestamp, khóa, index, đơn vị tiền) chưa được spec định nghĩa nên KHÔNG ghi ở đây — chỉ ghi thuộc tính nghiệp vụ và ràng buộc mà spec nêu.
 
@@ -15,7 +15,7 @@ DB: PostgreSQL 16. 6 bảng. Truy vấn chỉ qua sqlc; migration chỉ thêm fi
 | mô tả | — | Mô tả sản phẩm trên landing |
 | giá | số dương (spec §6) | Giá bán hiện hành; đơn cũ không bị ảnh hưởng khi đổi (snapshot ở `order_items`) |
 | loại | `gift_box` \| `single_cake` | Hộp quà hay bánh lẻ |
-| trạng thái | `available` \| `sold_out` \| `hidden` | `hidden` không xuất hiện trên API public; đây là cơ chế "tồn kho" duy nhất spec định nghĩa (⚠️ SRS mâu thuẫn #2) |
+| trạng thái | `available` \| `sold_out` \| `hidden` | `hidden` không xuất hiện trên API public. Tồn kho = trạng thái còn/hết hàng, KHÔNG đếm số lượng (chốt 2026-07-17, spec §1) |
 | ảnh | file trong `uploads/` trên VPS | Upload qua admin, Go API serve tĩnh |
 | thứ tự hiển thị | — | Sắp xếp trên landing |
 
@@ -48,7 +48,7 @@ DB: PostgreSQL 16. 6 bảng. Truy vấn chỉ qua sqlc; migration chỉ thêm fi
 | Thuộc tính | Ràng buộc/giá trị | Ý nghĩa nghiệp vụ |
 |---|---|---|
 | mã đơn | — | Mã tham chiếu đơn |
-| FK customer | tham chiếu `customers` | Khách của đơn |
+| FK customer | tham chiếu `customers`, **nullable** | Khách của đơn. Nullable vì convert từ lead không tự tạo customer — đơn convert lấy tên/SĐT từ lead, gắn customer là bước thủ công tùy chọn (chốt 2026-07-17, spec §1) |
 | trạng thái | `new` → `confirmed` → `delivering` → `done` \| `cancelled` | Vòng đời đơn |
 | kênh | `website` \| `phone` \| `zalo` \| `fb` | Nguồn đơn |
 | tổng tiền | số dương | |

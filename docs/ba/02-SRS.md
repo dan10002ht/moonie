@@ -1,17 +1,19 @@
 # 02 — SRS: Software Requirements Specification — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `51d60a1`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `3af21d0`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
 > Nguồn: spec `2026-07-17-mooni-website-design.md` (viết tắt "spec §n"), `CLAUDE.md`, `docs/PROGRESS.md`.
 > Ưu tiên theo MoSCoW: M (Must) / S (Should) / C (Could) / W (Won't — giai đoạn này).
 
-## ⚠️ Mâu thuẫn / lỗ hổng cần chủ dự án quyết
+## Quyết định đã chốt 2026-07-17 (chủ dự án quyết, spec đã cập nhật tại `3af21d0`)
 
-1. **Telegram cho đơn mới:** spec §1 (phạm vi) chỉ nói *lead mới* bắn Telegram; spec §2 (bảng kiến trúc, dòng Notify) nói "Gọi từ Go khi có **lead/đơn mới**". Cần xác nhận: đơn tạo trong admin (nhập tay/convert) có bắn Telegram không? REQ-NOTI-002 ghi theo §2 nhưng treo xác nhận.
-2. **"Tồn kho" là gì:** spec §1 nói admin quản lý "sản phẩm & tồn kho", nhưng bảng `products` (spec §3) chỉ có trạng thái `available | sold_out | hidden`, không có cột số lượng tồn. Cần xác nhận: tồn kho = trạng thái còn/hết hàng, hay cần theo dõi số lượng?
-3. **Định nghĩa "doanh thu tháng"** trong dashboard (spec §4): tính theo đơn ở trạng thái nào (`done`? từ `confirmed` trở lên?) — spec chưa định nghĩa.
-4. **Hành vi convert lead → order:** spec §3-4 nói lead có FK order khi convert, nhưng chưa nói khi convert có tự tạo bản ghi `customers` từ thông tin lead hay không.
-5. **Path prefix admin API:** spec §4 ghi `POST /auth/login`, `/admin/...` trong khi public ghi đủ `/api/v1/...` — mặc định hiểu tất cả nằm dưới `/api/v1`; OpenAPI spec (`api/openapi.yaml`) sẽ là nơi chốt chính thức.
+Năm lỗ hổng ba-writer phát hiện ở bản đầu đã được chủ dự án quyết và ghi vào spec §1, §4:
+
+1. **Telegram cho đơn mới:** bắn Telegram cho CẢ lead mới lẫn đơn mới, kể cả đơn tạo trong admin (spec §1). REQ-NOTI-002 hết treo, ưu tiên M.
+2. **Tồn kho:** CHỈ là trạng thái còn/hết hàng (`available | sold_out | hidden`), không đếm số lượng — bánh làm theo mẻ/đơn đặt (spec §1).
+3. **Doanh thu tháng (dashboard):** tổng đơn trạng thái `done` trong tháng (tiền thực đã về); có thể hiển thị dòng phụ "đang xử lý" để tham khảo (spec §1).
+4. **Convert lead → đơn:** KHÔNG tự tạo customer — bản ghi `customers` luôn tạo thủ công; đơn convert lấy tên/SĐT từ lead, gắn customer là bước thủ công tùy chọn → `orders.customer_id` nullable (spec §1).
+5. **Path prefix:** mọi endpoint (kể cả auth/admin) đều dưới `/api/v1`; `api/openapi.yaml` là nơi chốt chính thức (spec §4). Các đường dẫn `/admin/...` trong tài liệu này hiểu là `/api/v1/admin/...`.
 
 ## 1. Yêu cầu chức năng (REQ)
 
@@ -40,13 +42,13 @@
 | REQ-LEAD-002 | Hệ thống phải lưu lead vào DB với các thuộc tính: tên, SĐT, lời nhắn, sản phẩm quan tâm, nguồn, trạng thái. | spec §1, §3 | M |
 | REQ-LEAD-003 | Hệ thống phải quản lý vòng đời lead theo trạng thái `new` → `contacted` → `converted` \| `closed`. | spec §3 | M |
 | REQ-LEAD-004 | Hệ thống phải cho admin xem/quản lý leads qua `/admin/leads`. | spec §4 | M |
-| REQ-LEAD-005 | Hệ thống phải cho admin convert lead thành order qua `POST /admin/leads/{id}/convert`; lead giữ FK tới order sau khi convert. | spec §3, §4 | M |
+| REQ-LEAD-005 | Hệ thống phải cho admin convert lead thành order qua `POST /admin/leads/{id}/convert`; lead giữ FK tới order sau khi convert. Convert KHÔNG tự tạo customer — đơn convert lấy tên/SĐT từ lead, gắn customer là bước thủ công tùy chọn. | spec §1, §3, §4 | M |
 
 ### Orders (ORD)
 
 | Mã | Yêu cầu | Nguồn | Ưu tiên |
 |---|---|---|---|
-| REQ-ORD-001 | Hệ thống phải cho admin tạo và quản lý đơn hàng (nhập tay + convert từ lead) qua `/admin/orders`, với: mã đơn, khách hàng (FK), kênh (`website` \| `phone` \| `zalo` \| `fb`), tổng tiền, giảm giá, ngày giao, địa chỉ giao, ghi chú. | spec §1, §3, §4 | M |
+| REQ-ORD-001 | Hệ thống phải cho admin tạo và quản lý đơn hàng (nhập tay + convert từ lead) qua `/admin/orders`, với: mã đơn, khách hàng (FK, **nullable** — gắn thủ công tùy chọn), kênh (`website` \| `phone` \| `zalo` \| `fb`), tổng tiền, giảm giá, ngày giao, địa chỉ giao, ghi chú. | spec §1, §3, §4 | M |
 | REQ-ORD-002 | Hệ thống phải quản lý trạng thái đơn theo chuỗi `new` → `confirmed` → `delivering` → `done` \| `cancelled`, và cung cấp API cập nhật trạng thái. | spec §3, §4 | M |
 | REQ-ORD-003 | Hệ thống phải tạo order + order_items trong cùng một transaction. | spec §3 | M |
 | REQ-ORD-004 | Hệ thống phải snapshot tên + đơn giá sản phẩm vào order_items tại thời điểm đặt — đổi giá sản phẩm không ảnh hưởng đơn cũ. | spec §3 | M |
@@ -61,7 +63,7 @@
 
 | Mã | Yêu cầu | Nguồn | Ưu tiên |
 |---|---|---|---|
-| REQ-AUTH-001 | Hệ thống phải cung cấp `POST /auth/login` cho admin bằng email + password; password lưu dạng bcrypt hash. | spec §3, §4, §6 | M |
+| REQ-AUTH-001 | Hệ thống phải cung cấp `POST /api/v1/auth/login` cho admin bằng email + password; password lưu dạng bcrypt hash. | spec §3, §4, §6 | M |
 | REQ-AUTH-002 | Hệ thống phải quản lý phiên admin bằng JWT trong httpOnly cookie (SameSite=Lax, Secure ở production); mọi endpoint `/admin` được bảo vệ bởi middleware auth. | spec §4, §6 | M |
 | REQ-AUTH-003 | Hệ thống phải KHÔNG có đăng ký tài khoản public — admin tạo bằng CLI seed. | spec §6 | M |
 | REQ-AUTH-004 | Hệ thống phải chặn truy cập `/admin` phía web bằng auth guard qua `proxy.ts` (Next.js 16 — `middleware.ts` đã deprecate). | spec §2; CLAUDE.md (Kiến trúc) | M |
@@ -71,13 +73,13 @@
 | Mã | Yêu cầu | Nguồn | Ưu tiên |
 |---|---|---|---|
 | REQ-NOTI-001 | Hệ thống phải gửi thông báo Telegram Bot tức thì từ Go API khi có lead mới. | spec §1, §2 | M |
-| REQ-NOTI-002 | Hệ thống phải gửi thông báo Telegram khi có đơn mới. **⚠️ Treo xác nhận** — xem mục Mâu thuẫn #1. | spec §2 (bảng Notify) | S |
+| REQ-NOTI-002 | Hệ thống phải gửi thông báo Telegram tức thì khi có đơn mới, kể cả đơn tạo trong admin (nhập tay/convert). | spec §1, §2 | M |
 
 ### Dashboard & Admin UI (DASH / ADM)
 
 | Mã | Yêu cầu | Nguồn | Ưu tiên |
 |---|---|---|---|
-| REQ-DASH-001 | Hệ thống phải cung cấp `GET /admin/dashboard` trả: số leads mới, số đơn đang xử lý, doanh thu tháng. | spec §1, §4 | M |
+| REQ-DASH-001 | Hệ thống phải cung cấp `GET /admin/dashboard` trả: số leads mới, số đơn đang xử lý, doanh thu tháng (tổng đơn trạng thái `done` trong tháng; có thể kèm dòng phụ "đang xử lý" để tham khảo). | spec §1, §4 | M |
 | REQ-ADM-001 | Giao diện admin phải dùng shadcn/ui theo design tokens Mooni (navy/gold/cream, font Playfair Display + Be Vietnam Pro) — không giữ theme mặc định đen trắng. | spec §5; CLAUDE.md (tokens) | M |
 
 ## 2. Yêu cầu phi chức năng (NFR)
