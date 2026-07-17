@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/moonie/api/internal/notify"
 )
 
 func TestRouter(t *testing.T) {
-	handler := newRouter(nil)
+	handler := newRouter(nil, notify.NoopNotifier{})
 
 	tests := []struct {
 		name       string

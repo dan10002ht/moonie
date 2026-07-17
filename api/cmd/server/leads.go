@@ -11,6 +11,7 @@ import (
 
 	"github.com/moonie/api/internal/api"
 	"github.com/moonie/api/internal/httpx"
+	"github.com/moonie/api/internal/notify"
 	"github.com/moonie/api/internal/store"
 	"github.com/moonie/api/internal/validate"
 )
@@ -76,7 +77,42 @@ func (s *Server) CreateLead(w http.ResponseWriter, r *http.Request) {
 	// NFR-009: chỉ log 4 số cuối SĐT, không bao giờ log đầy đủ.
 	log.Printf("lead mới: id=%s sđt=%s", openapi_types.UUID(row.ID.Bytes), maskPhone(phone))
 
+	// FAIL-SAFE (REQ-NOTI-001, NFR-001): bắn Telegram SAU khi lưu lead thành công,
+	// trong goroutine với context.Background + timeout riêng — KHÔNG dùng r.Context()
+	// (request kết thúc ngay khi trả 201). Lỗi/treo notify không ảnh hưởng response:
+	// POST /leads trả 201 ngay, không chờ Telegram.
+	s.notifyNewLead(notify.LeadInfo{
+		Name:            name,
+		Phone:           phone,
+		Message:         derefString(in.Message),
+		ProductInterest: derefString(in.ProductInterest),
+	})
+
 	httpx.WriteJSON(w, http.StatusCreated, api.LeadCreated{Id: openapi_types.UUID(row.ID.Bytes)})
+}
+
+// notifyNewLead gửi thông báo lead mới bất đồng bộ. Guard nil để Server dựng trong
+// test (không set notifier) không panic. Timeout riêng để notify treo không rò
+// goroutine vô hạn. Lỗi chỉ log (mask SĐT theo NFR-009), không lan ra response.
+func (s *Server) notifyNewLead(lead notify.LeadInfo) {
+	if s.notifier == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), notify.Timeout)
+		defer cancel()
+		if err := s.notifier.NotifyNewLead(ctx, lead); err != nil {
+			log.Printf("notify lead mới thất bại (bỏ qua, lead đã lưu): sđt=%s: %v", maskPhone(lead.Phone), err)
+		}
+	}()
+}
+
+// derefString trả giá trị con trỏ string, hoặc "" nếu nil.
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 // maskPhone che toàn bộ SĐT trừ 4 chữ số cuối (NFR-009). Dùng khi log.

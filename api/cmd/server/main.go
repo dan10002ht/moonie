@@ -20,6 +20,7 @@ import (
 	"github.com/moonie/api/internal/config"
 	"github.com/moonie/api/internal/db"
 	"github.com/moonie/api/internal/httpx"
+	"github.com/moonie/api/internal/notify"
 	"github.com/moonie/api/internal/store"
 )
 
@@ -34,6 +35,7 @@ type Server struct {
 	pool     *pgxpool.Pool
 	products productLister
 	leads    leadCreator
+	notifier notify.Notifier
 }
 
 // GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
@@ -68,7 +70,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           newRouter(pool),
+		Handler:           newRouter(pool, newNotifier(cfg)),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -99,7 +101,7 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(pool *pgxpool.Pool) http.Handler {
+func newRouter(pool *pgxpool.Pool, notifier notify.Notifier) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -121,10 +123,22 @@ func newRouter(pool *pgxpool.Pool) http.Handler {
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
 	q := store.New(pool)
-	srv := &Server{pool: pool, products: q, leads: q}
+	srv := &Server{pool: pool, products: q, leads: q, notifier: notifier}
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r
+}
+
+// newNotifier chọn notifier theo env: có TELEGRAM_BOT_TOKEN → TelegramNotifier;
+// thiếu token → NoopNotifier + cảnh báo. Thiếu token KHÔNG làm POST /leads fail
+// (đặt hàng phải luôn thành công dù Telegram chưa cấu hình).
+func newNotifier(cfg *config.Config) notify.Notifier {
+	if cfg.TelegramBotToken == "" {
+		log.Print("notify: thiếu TELEGRAM_BOT_TOKEN → dùng NoopNotifier (không gửi Telegram)")
+		return notify.NoopNotifier{}
+	}
+	log.Print("notify: đã cấu hình Telegram Bot")
+	return notify.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.TelegramAPIBase)
 }
 
 // leadsRateLimit là ngưỡng rate limit cho POST /leads: số request tối đa mỗi IP

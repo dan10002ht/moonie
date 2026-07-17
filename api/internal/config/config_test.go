@@ -20,9 +20,13 @@ func TestLoad(t *testing.T) {
 				"JWT_SECRET":         "secret",
 				"TELEGRAM_BOT_TOKEN": "bot-token",
 				"TELEGRAM_CHAT_ID":   "chat-id",
+				"TELEGRAM_API_BASE":  "http://localhost:1234",
 				"PORT":               "9090",
 			},
 			check: func(t *testing.T, c *config.Config) {
+				if c.TelegramAPIBase != "http://localhost:1234" {
+					t.Errorf("TelegramAPIBase = %q", c.TelegramAPIBase)
+				}
 				if c.DatabaseURL != "postgres://mooni:mooni@localhost:5440/mooni?sslmode=disable" {
 					t.Errorf("DatabaseURL = %q", c.DatabaseURL)
 				}
@@ -49,6 +53,9 @@ func TestLoad(t *testing.T) {
 				if c.Port != "8080" {
 					t.Errorf("Port = %q, want default 8080", c.Port)
 				}
+				if c.TelegramAPIBase != "https://api.telegram.org" {
+					t.Errorf("TelegramAPIBase = %q, want default https://api.telegram.org", c.TelegramAPIBase)
+				}
 			},
 		},
 		{
@@ -60,7 +67,7 @@ func TestLoad(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all relevant env then set test env.
-			for _, k := range []string{"DATABASE_URL", "JWT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "PORT"} {
+			for _, k := range []string{"DATABASE_URL", "JWT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_API_BASE", "PORT"} {
 				t.Setenv(k, "")
 			}
 			for k, v := range tt.env {
