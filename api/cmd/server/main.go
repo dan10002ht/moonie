@@ -18,6 +18,7 @@ import (
 	"github.com/moonie/api/internal/config"
 	"github.com/moonie/api/internal/db"
 	"github.com/moonie/api/internal/httpx"
+	"github.com/moonie/api/internal/store"
 )
 
 // Server implement api.ServerInterface (sinh từ openapi.yaml). Dòng assertion
@@ -25,9 +26,11 @@ import (
 var _ api.ServerInterface = (*Server)(nil)
 
 // Server gom các phụ thuộc handler cần (pool DB…) và implement ServerInterface.
-// pool có thể nil trong test không cần DB (healthz không chạm DB).
+// pool có thể nil trong test không cần DB (healthz không chạm DB). products là
+// querier sản phẩm, tách qua interface để handler test được bằng fake (không DB).
 type Server struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	products productLister
 }
 
 // GetHealthz phục vụ GET /api/v1/healthz → 200 {"status":"ok"} (NFR-006).
@@ -110,7 +113,7 @@ func newRouter(pool *pgxpool.Pool) http.Handler {
 	// Mọi route đi qua handler sinh từ spec (HandlerFromMuxWithBaseURL) để lệch
 	// spec = fail compile. Server url trong openapi.yaml là /api/v1 nên baseURL
 	// khớp: path /healthz trong spec → phục vụ tại /api/v1/healthz.
-	srv := &Server{pool: pool}
+	srv := &Server{pool: pool, products: store.New(pool)}
 	api.HandlerFromMuxWithBaseURL(srv, r, "/api/v1")
 
 	return r

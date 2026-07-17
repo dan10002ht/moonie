@@ -65,7 +65,7 @@ const listVisibleProducts = `-- name: ListVisibleProducts :many
 SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at
 FROM products
 WHERE status != 'hidden'
-ORDER BY display_order, created_at
+ORDER BY display_order, created_at, id
 `
 
 // Sản phẩm public: ẩn status='hidden', sắp theo thứ tự hiển thị rồi thời gian tạo

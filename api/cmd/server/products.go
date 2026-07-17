@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -11,10 +12,16 @@ import (
 	"github.com/moonie/api/internal/store"
 )
 
+// productLister là phần store mà handler sản phẩm cần. Tách qua interface để
+// inject fake trong test (không cần Postgres cho handler test).
+type productLister interface {
+	ListVisibleProducts(ctx context.Context) ([]store.Product, error)
+}
+
 // ListProducts phục vụ GET /api/v1/products → 200 JSON array các sản phẩm đang
 // hiển thị (ẩn status='hidden'), sắp theo display_order (REQ-PROD-001). Public.
 func (s *Server) ListProducts(w http.ResponseWriter, r *http.Request) {
-	rows, err := store.New(s.pool).ListVisibleProducts(r.Context())
+	rows, err := s.products.ListVisibleProducts(r.Context())
 	if err != nil {
 		log.Printf("list products: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "không lấy được danh sách sản phẩm")

@@ -14,4 +14,4 @@ WHERE email = $1;
 SELECT id, slug, name, description, price, type, status, image_url, display_order, created_at, updated_at
 FROM products
 WHERE status != 'hidden'
-ORDER BY display_order, created_at;
+ORDER BY display_order, created_at, id;
