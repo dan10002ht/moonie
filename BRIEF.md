@@ -47,7 +47,7 @@ Toàn stack chạy được: docker compose up → Postgres(:5440 Colima) + Go A
 
 Plan: `docs/superpowers/plans/2026-07-17-giai-doan-2-api-public.md`. Feature task → qa-evaluator viết held-out TRƯỚC, generator không đọc held-out.
 
-1. [ ] Task 1 — products: migration + sqlc + GET /api/v1/products public (REQ-PROD-001)
+1. [⏳] Task 1 — products: migration + sqlc + GET /api/v1/products public (REQ-PROD-001)
 2. [ ] Task 2 — leads: migration + sqlc + POST /api/v1/leads validate + rate limit (REQ-LEAD-001/002/003, NFR-004/009)
 3. [ ] Task 3 — Telegram notify khi lead mới, fail-safe (REQ-NOTI-001, NFR-001)
 4. [ ] Task 4 — web api client getProducts + createLead (nền REQ-LAND-002/003)
