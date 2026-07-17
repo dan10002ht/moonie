@@ -50,7 +50,7 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-2-api-public.md`. Feature tas
 1. [✅] Task 1 — products: migration + sqlc + GET /api/v1/products public (REQ-PROD-001)
    - Files: migration 0002_products, store ListVisibleProducts, cmd/server/products.go (ListProducts + toAPIProduct + interface productLister), openapi Product schema, products_test.go (4 test). Commit 3aedd62 → fix 207ed4b.
    - Gate: HELD-OUT PASS 12/12 (generator không đọc held-out, commit 0 file heldout). go-reviewer PASS → 2 finding (ORDER BY không tất định + thiếu test mapping) → sửa → re-verify PASS (make check xanh, held-out vẫn PASS).
-2. [ ] Task 2 — leads: migration + sqlc + POST /api/v1/leads validate + rate limit (REQ-LEAD-001/002/003, NFR-004/009)
+2. [⏳] Task 2 — leads: migration + sqlc + POST /api/v1/leads validate + rate limit (REQ-LEAD-001/002/003, NFR-004/009)
 3. [ ] Task 3 — Telegram notify khi lead mới, fail-safe (REQ-NOTI-001, NFR-001)
 4. [ ] Task 4 — web api client getProducts + createLead (nền REQ-LAND-002/003)
 
