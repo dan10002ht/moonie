@@ -1,10 +1,10 @@
 # 05 — Traceability Matrix — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `67435fb`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `f3fd11f`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
-> ⚠️ **GĐ1 (Scaffold) 8/8 + GĐ2 (API Public) 4/4 + GĐ3 (Landing) 4/4 + GĐ4 (Admin API) 7/7 đã xong** (BRIEF.md, CHANGELOG 2026-07-17). Các dòng đã chạm được điền Task + commit + test/gate. `tests/heldout/` do qa-evaluator sở hữu; GĐ2 test products/leads/notify; GĐ3 form qua qa-evaluator held-out + mọi task UI qua design-evaluator (≥8/10); GĐ4 mọi feature admin qua held-out + go-reviewer + security-review tổng.
+> ⚠️ **GĐ1 (Scaffold) 8/8 + GĐ2 (API Public) 4/4 + GĐ3 (Landing) 4/4 + GĐ4 (Admin API) 7/7 + GĐ5 (Admin UI) 5/5 đã xong** (BRIEF.md, CHANGELOG 2026-07-17). Các dòng đã chạm được điền Task + commit + test/gate. `tests/heldout/` do qa-evaluator sở hữu; GĐ2 test products/leads/notify; GĐ3 form qua qa-evaluator held-out + mọi task UI qua design-evaluator (≥8/10); GĐ4 mọi feature admin qua held-out + go-reviewer + security-review tổng; GĐ5 mọi màn admin UI qua qa-evaluator held-out Playwright + design-evaluator ≥8/10.
 >
-> **📊 Tổng kết tiến độ REQ (sau GĐ4):** 25 REQ chức năng trong ma trận — **24 đã triển khai** (REQ-LAND-001..004, REQ-PROD-001/002/003, REQ-LEAD-001..005, REQ-ORD-001..004, REQ-CUST-001, REQ-AUTH-001..004, REQ-NOTI-001/002, REQ-DASH-001). Còn **1 REQ chưa xong: REQ-ADM-001** (admin UI — khung xong GĐ1, hoàn thiện GĐ5). NFR: 8/11 đạt hoặc hạ-tầng-xong; 3 NFR còn lại là NFR-002 (HTTPS/HSTS — GĐ6), NFR-003 (backup — GĐ6), NFR-011 (a11y admin UI — GĐ5). Nói gọn: **backend REQ đã hoàn tất; phần chưa xong chỉ còn UI admin (GĐ5) và hạ tầng deploy/bảo mật production (GĐ6).**
+> **📊 Tổng kết tiến độ REQ (sau GĐ5):** 25 REQ chức năng trong ma trận — **25/25 đã triển khai** (REQ-LAND-001..004, REQ-PROD-001/002/003, REQ-LEAD-001..005, REQ-ORD-001..004, REQ-CUST-001, REQ-AUTH-001..004, REQ-NOTI-001/002, REQ-DASH-001, REQ-ADM-001). **Dự án về mặt CHỨC NĂNG đã hoàn chỉnh** — cả phần public (landing, đặt hàng, Telegram) lẫn phần admin (login, dashboard, sản phẩm, leads, đơn hàng, khách hàng). NFR: 9/11 đạt hoặc hạ-tầng-xong; **3 NFR còn lại đều thuộc GĐ6 (deploy production)**: NFR-002 (HTTPS/HSTS), NFR-003 (backup Postgres), NFR-008 (chạy trên VPS thật — hiện mới `docker compose` local, chưa lên VPS). Nói gọn: **toàn bộ REQ chức năng đã hoàn tất; việc còn lại chỉ là dựng hạ tầng deploy + bảo mật production (GĐ6).**
 > Cột "GĐ": bước triển khai dự kiến theo spec §8 (1 Scaffold · 2 API nền · 3 Landing · 4 Auth+API admin · 5 Admin UI · 6 Deploy). Một số hạ tầng (sqlc, error JSON) spec xếp GĐ2 nhưng đã làm sẵn ở GĐ1 để dựng đường ống — cột GĐ giữ giá trị dự kiến, cột Trạng thái phản ánh thực tại.
 
 > **Ghi nhận thực tại GĐ1** (không sửa yêu cầu, chỉ ghi để chủ dự án nắm):
@@ -36,6 +36,12 @@
 >   - CSRF defense-in-depth: Origin/Referer check hoặc double-submit cho mutation admin, hoặc SameSite=Strict cookie (L4). JWT TTL ngắn hơn / token version thu hồi (L3).
 >   - Real client IP sau proxy (gộp với GĐ6 task 0): tin `X-Forwarded-For` từ trusted proxy để khôi phục rate-limit per-IP thật.
 
+> **Ghi nhận thực tại GĐ5** (không sửa yêu cầu, chỉ ghi để chủ dự án nắm):
+> - **Admin UI đầy đủ** (Next.js + shadcn/ui map tokens Mooni navy-gold): `/admin/login` + shell sidebar + dashboard (3 số: leads mới/đơn xử lý/doanh thu tháng) + quản lý sản phẩm (bảng gồm `hidden` + dialog form + upload ảnh preview) + leads (bảng phân trang + đổi status + convert→đơn) + đơn hàng (bảng phân trang + form tạo đơn nhiều dòng, tổng realtime + chi tiết snapshot + đổi status) + khách hàng (bảng phân trang + form tạo/sửa). Mọi màn qua qa-evaluator held-out Playwright + design-evaluator ≥8/10 (điểm cụ thể ở cột Test). Hoàn thành **REQ-ADM-001** và đạt **NFR-011** (chủ tự vận hành admin không cần dev).
+> - **⚠️ Admin UI gọi API qua Next Server Action forward cookie** (`web/app/actions/admin.ts`, `"use server"`): thao tác admin đi server-to-server, lấy cookie `mc_admin` từ `cookies()` gắn vào request tới Go API — **tránh CORS** và giữ cookie httpOnly (JS trình duyệt không chạm token). Hệ quả rate-limit login theo `RemoteAddr` thấy IP web server (cùng chủ đề real-IP-sau-proxy như GĐ3/GĐ4 — đã có backlog GĐ6).
+> - **Mobile-table (card layout) — BACKLOG, không chặn.** Bảng admin (sản phẩm/leads/đơn/khách) hiện tối ưu cho desktop; trên màn hẹp cần chuyển sang card layout. Ghi backlog §3, KHÔNG chặn đóng GĐ5 (admin dùng chính trên desktop; mọi task đã qua design-evaluator ≥8/10 ở viewport chuẩn).
+> - **`low_stock` product status VẪN CHƯA làm** (backlog kéo dài từ GĐ3/GĐ4). Kiểm migration thật: `products.status` CHECK vẫn `available|sold_out|hidden` (`api/migrations/0002_products.up.sql`), KHÔNG có `low_stock`. Admin product UI GĐ5 chỉ thao tác trên tập status hiện có. Giữ backlog §3 — cần migration mới nếu chốt.
+
 ## 1. Yêu cầu chức năng
 
 | REQ | Nguồn (spec) | GĐ | Task (BRIEF.md) | Test (kể cả held-out) | Trạng thái |
@@ -60,11 +66,11 @@
 | REQ-AUTH-001 | §3, §4, §6 | 4 | GĐ4/Task 2 (`7b6b2ab`, `e8b7bb5`) | Held-out 16/16 (login→cookie, sai pass 401) + go-reviewer PASS (chống user-enumeration + timing) | Đã triển khai (GĐ4): `POST /api/v1/auth/login` bcrypt |
 | REQ-AUTH-002 | §4, §6 | 4 | GĐ4/Task 2 (`7b6b2ab`, `e8b7bb5`) | Held-out 16/16 (cookie httpOnly/SameSite, cookie giả 401, `/admin/me` bảo vệ) + go-reviewer thử tấn công (alg=none/confusion/hết hạn/path-confusion đều chặn) → reject `JWT_SECRET` yếu/placeholder | Đã triển khai (GĐ4): JWT HS256 httpOnly cookie `mc_admin` + middleware bảo vệ `/api/v1/admin/*`; `POST /auth/logout` xóa cookie |
 | REQ-AUTH-003 | §6 | 4 | GĐ4/Task 2 (`7b6b2ab`); GĐ1/Task 8 (`b2a5914`) | Held-out 16/16 (không có endpoint register) + go-reviewer PASS | Đã triển khai (GĐ4): KHÔNG có đăng ký public; admin tạo qua CLI seed idempotent (`api/cmd/seed`, bcrypt) |
-| REQ-AUTH-004 | §2; CLAUDE.md | 4–5 | GĐ1/Task 5 (`dc40754`); GĐ4/Task 2 (`7b6b2ab`) | tsc/lint/build xanh + Held-out (proxy guard) | Đã triển khai (GĐ4): `web/proxy.ts` guard chặn `/admin` phía web, khớp middleware auth API; UI hoàn thiện GĐ5 |
+| REQ-AUTH-004 | §2; CLAUDE.md | 4–5 | GĐ1/Task 5 (`dc40754`); GĐ4/Task 2 (`7b6b2ab`); GĐ5/Task 1 (`8b80095`, `f9e9345`) | tsc/lint/build xanh + Held-out (proxy guard) + GĐ5 qa-evaluator held-out 5/5 (login→cookie→shell) | Đã triển khai (GĐ5): `web/proxy.ts` guard chặn `/admin` phía web, khớp middleware auth API; UI `/admin/login` + shell + đăng nhập/đăng xuất hoàn thiện GĐ5 |
 | REQ-NOTI-001 | §1, §2 | 2 | GĐ2/Task 3 (`4fb4a0d`, `7b59e92`) | Held-out 3/3 (fail-safe: 201 dù Telegram lỗi/treo/không token, `TELEGRAM_API_BASE` override) + go-reviewer PASS | Đã triển khai (GĐ2): notify lead mới (`internal/notify`) |
 | REQ-NOTI-002 | §1, §2 | 2 | GĐ4/Task 4+5 (`fa305e8`, `75a0fde`) | Held-out PASS (đơn mới → Telegram, cùng cơ chế fail-safe NOTI-001) + go-reviewer PASS | Đã triển khai (GĐ4): `NotifyNewOrder` bắn Telegram khi convert lead→đơn và khi nhập đơn tay |
 | REQ-DASH-001 | §1, §4 | 4–5 | GĐ4/Task 7 (`f904bea`) | Held-out PASS (delta + biên tháng + lọc status) | Đã triển khai (GĐ4): `GET /admin/dashboard` trả `new_leads`/`processing_orders`/`revenue_this_month` — doanh thu neo giờ VN (`Asia/Ho_Chi_Minh`), = tổng đơn `done` tháng hiện tại |
-| REQ-ADM-001 | §5; CLAUDE.md | 5 | GĐ1/Task 5 (`dc40754`) | tsc/lint/build xanh; tokens render thật (gate độc lập) | Khung xong GĐ1 (Tailwind v4 `@theme` design tokens, font Playfair+Be Vietnam), hoàn thiện GĐ5 |
+| REQ-ADM-001 | §5; CLAUDE.md | 5 | GĐ1/Task 5 (`dc40754`); GĐ5/Task 1–5 (`8b80095`, `f9e9345`, `33fd088`, `32c5089`, `cc73efd`, `1a145c7`, `cb74f38`, `6bf9c20`, `2136049`, `4028a66`) | qa-evaluator held-out Playwright (T1:5/5, T2:6/6, T3:6/6, T4:7/7, T5:7/7) + design-evaluator ≥8/10 (T1:9/9/8/9, T2:9/9/8/10, T3:9/9/8/10, T4:9/8/8/9, T5:9/8/8/9) | Đã triển khai (GĐ5): admin UI đầy đủ Next.js + shadcn/ui theo tokens Mooni — `/admin/login`, shell sidebar + dashboard, quản lý sản phẩm (upload ảnh), leads (convert→đơn), đơn hàng (nhập tay nhiều dòng + snapshot), khách hàng. Gọi API qua Server Action forward cookie (tránh CORS) |
 
 ## 2. Yêu cầu phi chức năng
 
@@ -80,12 +86,13 @@
 | NFR-008 | spec §2, §9 | 1, 6 | GĐ1/Task 1+7 (`bfff066`, `7bda1f8`) | `docker compose config` OK, full stack up (api healthz 200 + web 200) | Hạ tầng xong (GĐ1): Compose Postgres+api+web; deploy VPS còn ở GĐ6 |
 | NFR-009 | CLAUDE.md | 2 | GĐ2/Task 2+3 (`357eba7`, `4fb4a0d`) | go-reviewer PASS: SĐT log 4 số cuối ở `POST /leads` và notify; không rò token bot | Đã triển khai (GĐ2): che SĐT khi log, không rò dữ liệu nhạy cảm |
 | NFR-010 | spec §9 | 3 | GĐ3/Task 2+3+4 (`bfbbc00`, `1c5a81b`, `8297aaf`, `c99b4ea`) | design-evaluator ≥8/10 mọi task UI (9/9/8/9; 9/9/9/9; 9/9/9/9), screenshot loop 2 viewport so mockup | Đạt (GĐ3): mọi task UI qua ngưỡng design-evaluator |
-| NFR-011 | spec §9 | 5 | — | — | Chưa triển khai |
+| NFR-011 | spec §9 | 5 | GĐ5/Task 1–5 (`8b80095`, `33fd088`, `1a145c7`, `6bf9c20`, `4028a66`) | qa-evaluator held-out Playwright (đăng nhập → nhập đơn/đổi status/xem doanh thu qua UI, không cần dev) + design-evaluator ≥8/10 | Đạt (GĐ5): chủ dự án tự vận hành admin qua UI — nhập đơn tay, đổi trạng thái sản phẩm/đơn/lead, xem dashboard doanh thu; không cần developer |
 
 ## 3. Ngoài ma trận (backlog, chưa thành REQ)
 
 - Thống kê doanh thu theo tháng (BRIEF.md backlog) — nếu chốt, sẽ mở rộng REQ-DASH.
 - Xuất đơn ra Excel/CSV (BRIEF.md backlog) — nếu chốt, sẽ thêm REQ-ORD mới.
 - **[GĐ6] Rate limit `POST /leads` sau Next Server Action / Caddy** — hiện `RemoteAddr` thấy IP web server, không phải IP khách thật (xem "Ghi nhận thực tại GĐ3"). Cần cấu hình trusted proxy để forward IP thật, khôi phục hiệu lực rate limit per-IP. Backlog GĐ6 (deploy task 0), gắn NFR-004.
-- **[GĐ5] `low_stock` product status** — GĐ4 CHƯA thêm giá trị vào CHECK `products.status` (vẫn `available|sold_out|hidden`); mockup có nhãn "Sắp hết" (amber). Bổ sung khi làm admin product UI GĐ5: mở rộng CHECK + badge amber + landing render; cần migration mới.
+- **`low_stock` product status — VẪN CHƯA làm sau GĐ5.** Kiểm migration thật (`api/migrations/0002_products.up.sql`): CHECK `products.status` vẫn `available|sold_out|hidden`, KHÔNG có `low_stock`. Mockup có nhãn "Sắp hết" (amber). Admin product UI GĐ5 chỉ thao tác trên tập status hiện có. Nếu chốt: mở rộng CHECK (migration mới) + badge amber admin + landing render. Không chặn deploy GĐ6.
+- **Mobile-table (card layout) cho admin — sau GĐ5.** Bảng admin (sản phẩm/leads/đơn/khách) hiện tối ưu desktop; màn hẹp cần chuyển card layout. Không chặn đóng GĐ5 (admin dùng chính trên desktop; đã qua design-evaluator ≥8/10 ở viewport chuẩn). Cân nhắc bổ sung nếu chủ dự án cần thao tác trên điện thoại.
 - **[GĐ6] Security deploy-gate** (từ security-review tổng GĐ4 — MEDIUM/LOW, không chặn đóng GĐ4; BRIEF task 0b): (1) BẮT BUỘC đổi mật khẩu admin mặc định (`SEED_ADMIN_PASSWORD`); (2) HTTPS/HSTS + cookie `Secure` (`APP_ENV=production`); (3) security headers toàn cục API (CSP/X-Frame-Options/Referrer-Policy); (4) CSRF defense-in-depth (Origin/Referer/double-submit hoặc SameSite=Strict); (5) JWT TTL ngắn / token thu hồi. Gắn NFR-002, NFR-003.
