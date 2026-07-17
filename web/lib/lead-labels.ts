@@ -6,7 +6,7 @@
 export const LEAD_STATUSES = [
   { value: "new", label: "Mới" },
   { value: "contacted", label: "Đã liên hệ" },
-  { value: "converted", label: "Đã chuyển đơn" },
+  { value: "converted", label: "Đã lên đơn" },
   { value: "closed", label: "Đã đóng" },
 ] as const;
 

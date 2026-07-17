@@ -159,7 +159,7 @@ export function LeadsManager({
             <span className="font-semibold tabular-nums">
               {notice.orderCode}
             </span>{" "}
-            từ lead. Lead đã chuyển sang “Đã chuyển đơn”.
+            từ lead. Lead đã chuyển sang “{leadStatusLabel("converted")}”.
           </span>
           <Button asChild variant="outline" size="sm">
             <Link href="/admin/orders">
@@ -232,12 +232,12 @@ export function LeadsManager({
                           <span className="text-ink-faint">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-56 text-ink-muted">
+                      <TableCell className="w-[240px] max-w-[240px] text-ink-muted">
                         {lead.message ? (
                           <div>
                             <p
                               className={cn(
-                                "whitespace-pre-line",
+                                "whitespace-pre-line break-words",
                                 !isExpanded && "line-clamp-2",
                               )}
                               title={lead.message}
@@ -269,7 +269,7 @@ export function LeadsManager({
                         >
                           <SelectTrigger
                             size="sm"
-                            aria-label={`Trạng thái của ${lead.name}`}
+                            aria-label={`Trạng thái lead (${lead.id})`}
                             className="w-36"
                           >
                             <LeadStatusBadge status={lead.status} />
@@ -291,11 +291,12 @@ export function LeadsManager({
                           <Button
                             variant="outline"
                             size="sm"
+                            aria-label="Chuyển thành đơn"
                             disabled={converted || isBusy}
                             onClick={() => handleConvert(lead)}
                             title={
                               converted
-                                ? "Lead đã được chuyển thành đơn"
+                                ? "Lead đã được lên đơn"
                                 : undefined
                             }
                           >
