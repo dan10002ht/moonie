@@ -1,39 +1,55 @@
 # 04 — Data Dictionary — Website Mooni Cake
 
-> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `961ed54`
+> **Cập nhật:** 2026-07-17 · **Commit nguồn:** `bcf6da8`
 > Tài liệu phái sinh — nguồn chân lý là spec/code; nếu lệch nhau, spec/code thắng.
-> ⚠️ **Sinh từ mục Database (spec §3).** Sau GĐ1 (Scaffold) mới có duy nhất migration `0001_init.up.sql` cho bảng `admin_users` — bảng này ĐÃ đối chiếu code thật (xem §6). Năm bảng nghiệp vụ còn lại (`products`, `leads`, `customers`, `orders`, `order_items`) CHƯA có migration — vẫn là spec, kiểu dữ liệu cụ thể (varchar/numeric/timestamp, khóa, index, đơn vị tiền) chưa được spec định nghĩa nên KHÔNG ghi ở đây; chỉ ghi thuộc tính nghiệp vụ và ràng buộc mà spec nêu, chờ migration đối chiếu.
+> ⚠️ **Sinh từ mục Database (spec §3).** Sau GĐ2 (API Public) đã có 3 migration đối chiếu code thật: `0001_init` (`admin_users`, §6), `0002_products` (`products`, §1), `0003_leads` (`leads`, §2). Ba bảng nghiệp vụ còn lại (`customers`, `orders`, `order_items`) CHƯA có migration — vẫn là spec; kiểu dữ liệu cụ thể chưa được spec định nghĩa nên KHÔNG ghi ở đây, chỉ ghi thuộc tính nghiệp vụ và ràng buộc spec nêu, chờ migration đối chiếu.
 
 > **Ghi nhận thực tại GĐ1** (không sửa yêu cầu nghiệp vụ, chỉ ghi để chủ dự án nắm):
 > - `admin_users.role`: migration đặt `DEFAULT 'admin'` và KHÔNG có ràng buộc CHECK liệt kê giá trị. Thực tại GĐ1 chỉ dùng 1 role `'admin'`; spec vẫn chưa chốt danh sách role. Nếu sau này cần phân quyền nhiều role, cần migration bổ sung.
 > - `admin_users.password_hash` kiểu `text`; seed (`api/cmd/seed`) sinh hash **bcrypt** (`$2a$…`), khớp yêu cầu "không lưu plaintext" của spec.
 
+> **Ghi nhận thực tại GĐ2** (không sửa yêu cầu, chỉ ghi để chủ dự án nắm):
+> - `products.price` kiểu **`bigint`** (VND số nguyên) — không dùng float/numeric cho tiền. `type` và `status` có ràng buộc **CHECK** liệt kê giá trị; `display_order int DEFAULT 0` để sắp landing. Ảnh lưu ở cột `image_url text` (URL/đường dẫn), không lưu blob.
+> - `leads.source` kiểu `text` **DEFAULT `'website'` nhưng KHÔNG có CHECK** — nguồn là chuỗi tự do, hiện thực tại chỉ có `'website'`. `status` có CHECK `new|contacted|converted|closed`.
+> - ⚠️ **`leads` KHÔNG có cột FK sang `orders`** trong migration `0003` (dòng "FK order" ở §2 trước đây là dự đoán từ spec). Việc liên kết lead→đơn khi `converted` chưa hiện diện ở schema — sẽ do migration GĐ4 quyết định (cột FK trên `leads` hay tra ngược từ `orders`). Không phải mâu thuẫn, chỉ là phần chưa tới.
+> - `leads` KHÔNG có `updated_at` (chỉ `created_at`); vòng đời hiện chỉ đổi `status`. `products` có cả `created_at` và `updated_at`.
+
 DB: PostgreSQL 16. 6 bảng. Truy vấn chỉ qua sqlc; migration chỉ thêm file mới (CLAUDE.md).
 
 ## 1. `products` — sản phẩm
 
-| Thuộc tính | Ràng buộc/giá trị | Ý nghĩa nghiệp vụ |
-|---|---|---|
-| slug | — | Định danh thân thiện URL |
-| tên | — | Tên hiển thị (vd. Nguyệt Quang Kim) |
-| mô tả | — | Mô tả sản phẩm trên landing |
-| giá | số dương (spec §6) | Giá bán hiện hành; đơn cũ không bị ảnh hưởng khi đổi (snapshot ở `order_items`) |
-| loại | `gift_box` \| `single_cake` | Hộp quà hay bánh lẻ |
-| trạng thái | `available` \| `sold_out` \| `hidden` | `hidden` không xuất hiện trên API public. Tồn kho = trạng thái còn/hết hàng, KHÔNG đếm số lượng (chốt 2026-07-17, spec §1) |
-| ảnh | file trong `uploads/` trên VPS | Upload qua admin, Go API serve tĩnh |
-| thứ tự hiển thị | — | Sắp xếp trên landing |
+> ✅ **Đã khớp migration `0002_products.up.sql`** (GĐ2, task 1). Cột/kiểu/ràng buộc lấy trực tiếp từ migration thật, không còn suy diễn từ spec.
+
+| Cột | Kiểu | Ràng buộc | Ý nghĩa nghiệp vụ |
+|---|---|---|---|
+| `id` | `uuid` | PRIMARY KEY, DEFAULT `gen_random_uuid()` | Khóa chính; UUID sinh phía DB |
+| `slug` | `text` | UNIQUE, NOT NULL | Định danh thân thiện URL |
+| `name` | `text` | NOT NULL | Tên hiển thị (vd. Nguyệt Quang Kim) |
+| `description` | `text` | nullable | Mô tả sản phẩm trên landing |
+| `price` | `bigint` | NOT NULL | Giá bán VND, **số nguyên**; đơn cũ không bị ảnh hưởng khi đổi (snapshot ở `order_items`) |
+| `type` | `text` | NOT NULL, CHECK IN (`gift_box`, `single_cake`) | Hộp quà hay bánh lẻ |
+| `status` | `text` | NOT NULL, DEFAULT `'available'`, CHECK IN (`available`, `sold_out`, `hidden`) | `hidden` không xuất hiện trên API public. Tồn kho = trạng thái còn/hết hàng, KHÔNG đếm số lượng (chốt 2026-07-17, spec §1) |
+| `image_url` | `text` | nullable | URL/đường dẫn ảnh; upload qua admin (GĐ4–5) |
+| `display_order` | `int` | NOT NULL, DEFAULT `0` | Sắp xếp trên landing |
+| `created_at` | `timestamptz` | NOT NULL, DEFAULT `now()` | Thời điểm tạo |
+| `updated_at` | `timestamptz` | NOT NULL, DEFAULT `now()` | Thời điểm cập nhật |
 
 ## 2. `leads` — khách để lại thông tin
 
-| Thuộc tính | Ràng buộc/giá trị | Ý nghĩa nghiệp vụ |
-|---|---|---|
-| tên | — | Tên khách |
-| SĐT | validate định dạng tại API boundary | Kênh liên hệ chính; log chỉ 4 số cuối (NFR-009) |
-| lời nhắn | — | Nội dung khách nhập ở form |
-| sản phẩm quan tâm | — | Sản phẩm khách chọn/quan tâm khi điền form |
-| nguồn | — | Nguồn lead |
-| trạng thái | `new` → `contacted` → `converted` \| `closed` | Vòng đời xử lý lead |
-| FK order | có giá trị khi `converted` | Liên kết đơn được tạo từ lead |
+> ✅ **Đã khớp migration `0003_leads.up.sql`** (GĐ2, task 2). Cột/kiểu/ràng buộc lấy trực tiếp từ migration thật.
+
+| Cột | Kiểu | Ràng buộc | Ý nghĩa nghiệp vụ |
+|---|---|---|---|
+| `id` | `uuid` | PRIMARY KEY, DEFAULT `gen_random_uuid()` | Khóa chính |
+| `name` | `text` | NOT NULL | Tên khách; validate độ dài tại API boundary (NFR-004) |
+| `phone` | `text` | NOT NULL | Kênh liên hệ chính; validate SĐT VN tại API boundary; log chỉ 4 số cuối (NFR-009) |
+| `message` | `text` | nullable | Nội dung khách nhập ở form |
+| `product_interest` | `text` | nullable | Sản phẩm khách chọn/quan tâm khi điền form |
+| `source` | `text` | NOT NULL, DEFAULT `'website'` | Nguồn lead; chuỗi tự do (KHÔNG có CHECK) |
+| `status` | `text` | NOT NULL, DEFAULT `'new'`, CHECK IN (`new`, `contacted`, `converted`, `closed`) | Vòng đời xử lý lead |
+| `created_at` | `timestamptz` | NOT NULL, DEFAULT `now()` | Thời điểm tạo (không có `updated_at`) |
+
+> ⚠️ Migration `0003` **chưa có** cột FK sang `orders` — liên kết lead→đơn khi `converted` sẽ do migration GĐ4 quyết định (xem "Ghi nhận thực tại GĐ2").
 
 ## 3. `customers` — khách hàng
 
