@@ -42,6 +42,8 @@
   --color-stock-in-text: #37624a; /* "Còn hàng" chữ */
   --color-stock-in-dot: #4e7b60; /* "Còn hàng" chấm */
   --color-stock-out-dot: #b7b2a8; /* "Hết hàng" chấm mờ */
+  --color-stock-in-bg: #e7f0ea; /* pill "Đang bán" nền */
+  --color-stock-warn-bg: #f4ecd8; /* pill "Hết hàng" nền */
 }
 
 /* Cầu nối shadcn/ui → tokens Mooni.

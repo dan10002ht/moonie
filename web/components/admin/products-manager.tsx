@@ -36,8 +36,8 @@ import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 function StatusBadge({ status }: { status: AdminProduct["status"] }) {
   const styles: Record<AdminProduct["status"], string> = {
     available:
-      "border-transparent bg-[#e7f0ea] text-stock-in-text",
-    sold_out: "border-transparent bg-[#f4ecd8] text-gold-deep",
+      "border-transparent bg-stock-in-bg text-stock-in-text",
+    sold_out: "border-transparent bg-stock-warn-bg text-gold-deep",
     hidden: "border-border bg-muted text-ink-muted",
   };
   return (
