@@ -152,14 +152,29 @@ func TestOrderTransactionSnapshot(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("số order_items = %d, mong đợi 2", len(got))
 	}
-	if got[0].UnitPrice != 200000 {
-		t.Errorf("snapshot unit_price = %d, mong đợi giữ 200000 (không theo giá mới)", got[0].UnitPrice)
+
+	// Hai dòng insert trong cùng transaction có created_at bằng nhau (now() = thời
+	// điểm bắt đầu tx), nên thứ tự trả về không xác định — tra cứu theo có/không
+	// gắn product thay vì giả định index.
+	var withProduct, without *store.OrderItem
+	for i := range got {
+		if got[i].ProductID.Valid {
+			withProduct = &got[i]
+		} else {
+			without = &got[i]
+		}
 	}
-	if got[0].ProductName != "Bánh thập cẩm" {
-		t.Errorf("snapshot product_name = %q, mong đợi %q", got[0].ProductName, "Bánh thập cẩm")
+	if withProduct == nil || without == nil {
+		t.Fatalf("mong đợi 1 dòng có product + 1 dòng không, có %+v", got)
 	}
-	if got[1].ProductID.Valid {
-		t.Errorf("dòng thứ 2 không gắn product, mong đợi product_id NULL, có %v", got[1].ProductID)
+	if withProduct.UnitPrice != 200000 {
+		t.Errorf("snapshot unit_price = %d, mong đợi giữ 200000 (không theo giá mới)", withProduct.UnitPrice)
+	}
+	if withProduct.ProductName != "Bánh thập cẩm" {
+		t.Errorf("snapshot product_name = %q, mong đợi %q", withProduct.ProductName, "Bánh thập cẩm")
+	}
+	if without.ProductName != "Bánh tùy chỉnh (không có product)" {
+		t.Errorf("dòng không gắn product có product_name = %q, mong đợi %q", without.ProductName, "Bánh tùy chỉnh (không có product)")
 	}
 }
 

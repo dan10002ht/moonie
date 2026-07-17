@@ -30,8 +30,15 @@ func newTestDB(t *testing.T) *pgxpool.Pool {
 		tcpostgres.WithDatabase("mooni"),
 		tcpostgres.WithUsername("mooni"),
 		tcpostgres.WithPassword("mooni"),
+		// Chờ ROBUST: Postgres init mở port RỒI restart trong lúc khởi tạo, nên
+		// ForListeningPort báo sẵn sàng quá sớm → migrate dính "connection refused"
+		// khi spin nhiều container dưới tải Colima. Postgres log dòng "ready to accept
+		// connections" 2 lần (init tạm + ready thật) — chờ occurrence 2 mới chắc chắn
+		// nhận được kết nối SQL.
 		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("5432/tcp").WithStartupTimeout(60*time.Second),
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(60*time.Second),
 		),
 	)
 	if err != nil {
