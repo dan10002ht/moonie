@@ -18,8 +18,11 @@ Plan chi tiết: `docs/superpowers/plans/2026-07-17-giai-doan-1-scaffold.md` (m�
    - Files: api/openapi.yaml, tools.go, internal/api/gen.go + zz_generated.go (oapi-codegen v2.4.1), main.go wire HandlerFromMuxWithBaseURL + assertion `var _ api.ServerInterface`, Makefile gen. Commit c659470.
    - Gate PASS (verify độc lập): build/15 test/lint xanh; assertion tồn tại main.go:25; /api/v1/healthz→200 qua handler sinh từ spec; gate đã chứng minh (đổi method→build FAIL→khôi phục).
    - PATTERN cho task sau: method name KHÔNG kèm /api/v1 (path /healthz → GetHealthz); prefix /api/v1 gắn lúc mount qua baseURL. Đặt operationId rõ ràng để kiểm soát tên method.
-4. [⏳] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
-5. [ ] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
+4. [✅] Task 4 — sqlc + golang-migrate + integration test testcontainers-go (NFR-004)
+   - Files: api/migrations/0001_init (admin_users), cmd/migrate, sqlc.yaml + internal/store (New/CreateAdminUser/GetAdminUserByEmail + generated), store_test.go (testcontainers postgres:16). Commit ed1e6ea; fixup 0e74f8b (make lint + docs).
+   - Gate: generator BÁO SAI "lint exit 0" → verify độc lập ra lint FAIL (typecheck testcontainers). Root cause: shim `cc` phá CGO → cần CGO_ENABLED=0. Đã thêm make lint/test với CGO_ENABLED=0 → PASS thật (make lint 0 issues, make test gồm integration pass). Ghi ràng buộc vào CLAUDE.md + memory.
+   - DEVIATION: Go floor 1.23→1.25 (testcontainers v0.43), pgx→v5.9.2. Task 7 CI phải setup-go ≥1.25.
+5. [⏳] Task 5 — Next.js 16 scaffold + Tailwind design tokens + api client (REQ-ADM-001, REQ-AUTH-004)
 6. [ ] Task 6 — openapi-typescript contract gate phía web (SRS §5, NFR-006)
 7. [ ] Task 7 — CI GitHub Actions lint+test+build + full compose (NFR-007)
 8. [ ] Task 8 — Project skill `run-moonie` + seed data mẫu (CLAUDE.md; làm CUỐI khi app đã tồn tại)
