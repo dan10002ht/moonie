@@ -15,10 +15,52 @@ import (
 
 // Defines values for LeadStatus.
 const (
-	Closed    LeadStatus = "closed"
-	Contacted LeadStatus = "contacted"
-	Converted LeadStatus = "converted"
-	New       LeadStatus = "new"
+	LeadStatusClosed    LeadStatus = "closed"
+	LeadStatusContacted LeadStatus = "contacted"
+	LeadStatusConverted LeadStatus = "converted"
+	LeadStatusNew       LeadStatus = "new"
+)
+
+// Defines values for OrderChannel.
+const (
+	OrderChannelFb      OrderChannel = "fb"
+	OrderChannelPhone   OrderChannel = "phone"
+	OrderChannelWebsite OrderChannel = "website"
+	OrderChannelZalo    OrderChannel = "zalo"
+)
+
+// Defines values for OrderStatus.
+const (
+	OrderStatusCancelled  OrderStatus = "cancelled"
+	OrderStatusConfirmed  OrderStatus = "confirmed"
+	OrderStatusDelivering OrderStatus = "delivering"
+	OrderStatusDone       OrderStatus = "done"
+	OrderStatusNew        OrderStatus = "new"
+)
+
+// Defines values for OrderDetailChannel.
+const (
+	OrderDetailChannelFb      OrderDetailChannel = "fb"
+	OrderDetailChannelPhone   OrderDetailChannel = "phone"
+	OrderDetailChannelWebsite OrderDetailChannel = "website"
+	OrderDetailChannelZalo    OrderDetailChannel = "zalo"
+)
+
+// Defines values for OrderDetailStatus.
+const (
+	Cancelled  OrderDetailStatus = "cancelled"
+	Confirmed  OrderDetailStatus = "confirmed"
+	Delivering OrderDetailStatus = "delivering"
+	Done       OrderDetailStatus = "done"
+	New        OrderDetailStatus = "new"
+)
+
+// Defines values for OrderInputChannel.
+const (
+	Fb      OrderInputChannel = "fb"
+	Phone   OrderInputChannel = "phone"
+	Website OrderInputChannel = "website"
+	Zalo    OrderInputChannel = "zalo"
 )
 
 // Defines values for ProductStatus.
@@ -132,6 +174,115 @@ type LoginResult struct {
 	Ok bool `json:"ok"`
 }
 
+// Order defines model for Order.
+type Order struct {
+	Channel         OrderChannel        `json:"channel"`
+	Code            string              `json:"code"`
+	CreatedAt       time.Time           `json:"created_at"`
+	CustomerId      *openapi_types.UUID `json:"customer_id"`
+	DeliveryAddress *string             `json:"delivery_address"`
+	DeliveryDate    *openapi_types.Date `json:"delivery_date"`
+	Discount        int64               `json:"discount"`
+	Id              openapi_types.UUID  `json:"id"`
+	Note            *string             `json:"note"`
+	Status          OrderStatus         `json:"status"`
+	Subtotal        int64               `json:"subtotal"`
+	Total           int64               `json:"total"`
+}
+
+// OrderChannel defines model for Order.Channel.
+type OrderChannel string
+
+// OrderStatus defines model for Order.Status.
+type OrderStatus string
+
+// OrderCreated defines model for OrderCreated.
+type OrderCreated struct {
+	// Code Mã đơn sinh tự động, vd "MC-20260717-AB12"
+	Code string             `json:"code"`
+	Id   openapi_types.UUID `json:"id"`
+}
+
+// OrderDetail defines model for OrderDetail.
+type OrderDetail struct {
+	Channel         OrderDetailChannel  `json:"channel"`
+	Code            string              `json:"code"`
+	CreatedAt       time.Time           `json:"created_at"`
+	CustomerId      *openapi_types.UUID `json:"customer_id"`
+	DeliveryAddress *string             `json:"delivery_address"`
+	DeliveryDate    *openapi_types.Date `json:"delivery_date"`
+	Discount        int64               `json:"discount"`
+	Id              openapi_types.UUID  `json:"id"`
+	Items           []OrderItem         `json:"items"`
+	Note            *string             `json:"note"`
+	Status          OrderDetailStatus   `json:"status"`
+	Subtotal        int64               `json:"subtotal"`
+	Total           int64               `json:"total"`
+}
+
+// OrderDetailChannel defines model for OrderDetail.Channel.
+type OrderDetailChannel string
+
+// OrderDetailStatus defines model for OrderDetail.Status.
+type OrderDetailStatus string
+
+// OrderInput defines model for OrderInput.
+type OrderInput struct {
+	// Channel Kênh đặt hàng
+	Channel OrderInputChannel `json:"channel"`
+
+	// CustomerId Khách hàng (tùy chọn — gắn thủ công)
+	CustomerId      *openapi_types.UUID `json:"customer_id"`
+	DeliveryAddress *string             `json:"delivery_address"`
+	DeliveryDate    *openapi_types.Date `json:"delivery_date"`
+
+	// Discount Giảm giá VND ≥ 0 (mặc định 0). Vượt tổng tiền hàng → 400.
+	Discount *int64 `json:"discount"`
+
+	// Items Ít nhất 1 dòng đơn
+	Items []OrderItemInput `json:"items"`
+	Note  *string          `json:"note"`
+}
+
+// OrderInputChannel Kênh đặt hàng
+type OrderInputChannel string
+
+// OrderItem defines model for OrderItem.
+type OrderItem struct {
+	Id        openapi_types.UUID  `json:"id"`
+	ProductId *openapi_types.UUID `json:"product_id"`
+
+	// ProductName Snapshot tên sản phẩm tại thời điểm đặt
+	ProductName string `json:"product_name"`
+	Quantity    int    `json:"quantity"`
+
+	// UnitPrice Snapshot đơn giá tại thời điểm đặt (VND)
+	UnitPrice int64 `json:"unit_price"`
+}
+
+// OrderItemInput defines model for OrderItemInput.
+type OrderItemInput struct {
+	// ProductId Sản phẩm đặt. Không tồn tại → 400 (rollback toàn bộ đơn).
+	ProductId openapi_types.UUID `json:"product_id"`
+
+	// Quantity Số lượng, phải > 0
+	Quantity int `json:"quantity"`
+}
+
+// OrderList defines model for OrderList.
+type OrderList struct {
+	Items []Order `json:"items"`
+
+	// Total Tổng số đơn (không phân trang)
+	Total int64 `json:"total"`
+}
+
+// OrderStatusInput defines model for OrderStatusInput.
+type OrderStatusInput struct {
+	// Status Trạng thái mới. Hợp lệ- new | confirmed | delivering | done | cancelled
+	Status string `json:"status"`
+}
+
 // Product defines model for Product.
 type Product struct {
 	// Badge Nhãn marketing (vd "Bán chạy", "Mới"), null nếu không có
@@ -194,6 +345,12 @@ type ListAdminLeadsParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ListAdminOrdersParams defines parameters for ListAdminOrders.
+type ListAdminOrdersParams struct {
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // UploadProductImageMultipartBody defines parameters for UploadProductImage.
 type UploadProductImageMultipartBody struct {
 	File openapi_types.File `json:"file"`
@@ -201,6 +358,12 @@ type UploadProductImageMultipartBody struct {
 
 // UpdateLeadStatusJSONRequestBody defines body for UpdateLeadStatus for application/json ContentType.
 type UpdateLeadStatusJSONRequestBody = LeadStatusInput
+
+// CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
+type CreateOrderJSONRequestBody = OrderInput
+
+// UpdateOrderStatusJSONRequestBody defines body for UpdateOrderStatus for application/json ContentType.
+type UpdateOrderStatusJSONRequestBody = OrderStatusInput
 
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput
@@ -231,6 +394,18 @@ type ServerInterface interface {
 	// Thông tin admin đang đăng nhập
 	// (GET /admin/me)
 	GetAdminMe(w http.ResponseWriter, r *http.Request)
+	// Danh sách đơn hàng cho admin (phân trang)
+	// (GET /admin/orders)
+	ListAdminOrders(w http.ResponseWriter, r *http.Request, params ListAdminOrdersParams)
+	// Tạo đơn hàng (nhập tay)
+	// (POST /admin/orders)
+	CreateOrder(w http.ResponseWriter, r *http.Request)
+	// Chi tiết đơn hàng + các dòng
+	// (GET /admin/orders/{id})
+	GetAdminOrder(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Cập nhật trạng thái đơn hàng
+	// (PATCH /admin/orders/{id})
+	UpdateOrderStatus(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Danh sách sản phẩm cho admin (gồm cả hidden)
 	// (GET /admin/products)
 	ListAdminProducts(w http.ResponseWriter, r *http.Request)
@@ -288,6 +463,30 @@ func (_ Unimplemented) ConvertLead(w http.ResponseWriter, r *http.Request, id op
 // Thông tin admin đang đăng nhập
 // (GET /admin/me)
 func (_ Unimplemented) GetAdminMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Danh sách đơn hàng cho admin (phân trang)
+// (GET /admin/orders)
+func (_ Unimplemented) ListAdminOrders(w http.ResponseWriter, r *http.Request, params ListAdminOrdersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tạo đơn hàng (nhập tay)
+// (POST /admin/orders)
+func (_ Unimplemented) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Chi tiết đơn hàng + các dòng
+// (GET /admin/orders/{id})
+func (_ Unimplemented) GetAdminOrder(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Cập nhật trạng thái đơn hàng
+// (PATCH /admin/orders/{id})
+func (_ Unimplemented) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -450,6 +649,105 @@ func (siw *ServerInterfaceWrapper) GetAdminMe(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAdminMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminOrders operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminOrders(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminOrdersParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminOrders(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateOrder operation middleware
+func (siw *ServerInterfaceWrapper) CreateOrder(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateOrder(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminOrder operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminOrder(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminOrder(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOrderStatus operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOrderStatus(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -756,6 +1054,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/me", wrapper.GetAdminMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/orders", wrapper.ListAdminOrders)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/orders", wrapper.CreateOrder)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/orders/{id}", wrapper.GetAdminOrder)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/admin/orders/{id}", wrapper.UpdateOrderStatus)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/products", wrapper.ListAdminProducts)

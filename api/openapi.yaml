@@ -260,6 +260,159 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/orders:
+    get:
+      operationId: listAdminOrders
+      summary: Danh sách đơn hàng cho admin (phân trang)
+      description: >-
+        Trả về đơn hàng phân trang, mới nhất trước (ORDER BY created_at DESC, id).
+        limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0.
+        Trả {items, total}. Cần auth admin (REQ-ORD-001).
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Danh sách đơn hàng + tổng số
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createOrder
+      summary: Tạo đơn hàng (nhập tay)
+      description: >-
+        Tạo đơn + order_items TRONG một transaction (REQ-ORD-003). Với mỗi dòng
+        lấy sản phẩm theo product_id để SNAPSHOT product_name + unit_price (giá
+        hiện tại) (REQ-ORD-004). subtotal = Σ(unit_price×quantity), total =
+        subtotal − discount. Sinh mã đơn MC-YYYYMMDD-xxxx. Sau commit bắn Telegram
+        thông báo đơn mới (fail-safe). items rỗng / quantity ≤ 0 / discount vượt
+        subtotal → 400; product_id không tồn tại → 400 (rollback toàn bộ). Cần auth
+        admin (REQ-ORD-001/003/004, REQ-NOTI-002).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Đã tạo đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderCreated"
+        "400":
+          description: Dữ liệu vào không hợp lệ (items rỗng, quantity ≤ 0, discount vượt subtotal, product không tồn tại)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/orders/{id}:
+    get:
+      operationId: getAdminOrder
+      summary: Chi tiết đơn hàng + các dòng
+      description: >-
+        Trả chi tiết một đơn kèm mảng items (snapshot product_name/unit_price/
+        quantity tại thời điểm đặt). Không tìm thấy → 404. Cần auth admin
+        (REQ-ORD-001/004).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chi tiết đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateOrderStatus
+      summary: Cập nhật trạng thái đơn hàng
+      description: >-
+        Đổi trạng thái đơn (new | confirmed | delivering | done | cancelled)
+        (REQ-ORD-002). Trạng thái không hợp lệ → 400. Đơn ở trạng thái kết thúc
+        (done/cancelled) KHÔNG được đổi sang trạng thái khác → 400. Không tìm thấy
+        → 404. Cần auth admin.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusInput"
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Trạng thái không hợp lệ hoặc chuyển trạng thái không cho phép
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/products:
     get:
       operationId: listAdminProducts
@@ -663,6 +816,238 @@ components:
         order_code:
           type: string
           description: Mã đơn sinh tự động, vd "MC-20260717-AB12"
+    OrderItemInput:
+      type: object
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          description: Sản phẩm đặt. Không tồn tại → 400 (rollback toàn bộ đơn).
+        quantity:
+          type: integer
+          description: Số lượng, phải > 0
+    OrderInput:
+      type: object
+      required:
+        - channel
+        - items
+      properties:
+        channel:
+          type: string
+          enum:
+            - website
+            - phone
+            - zalo
+            - fb
+          description: Kênh đặt hàng
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Khách hàng (tùy chọn — gắn thủ công)
+        discount:
+          type: integer
+          format: int64
+          nullable: true
+          description: Giảm giá VND ≥ 0 (mặc định 0). Vượt tổng tiền hàng → 400.
+        delivery_date:
+          type: string
+          format: date
+          nullable: true
+        delivery_address:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        items:
+          type: array
+          minItems: 1
+          description: Ít nhất 1 dòng đơn
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+    Order:
+      type: object
+      required:
+        - id
+        - code
+        - channel
+        - status
+        - subtotal
+        - discount
+        - total
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+        channel:
+          type: string
+          enum:
+            - website
+            - phone
+            - zalo
+            - fb
+        status:
+          type: string
+          enum:
+            - new
+            - confirmed
+            - delivering
+            - done
+            - cancelled
+        subtotal:
+          type: integer
+          format: int64
+        discount:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        delivery_date:
+          type: string
+          format: date
+          nullable: true
+        delivery_address:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    OrderItem:
+      type: object
+      required:
+        - id
+        - product_name
+        - unit_price
+        - quantity
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+          nullable: true
+        product_name:
+          type: string
+          description: Snapshot tên sản phẩm tại thời điểm đặt
+        unit_price:
+          type: integer
+          format: int64
+          description: Snapshot đơn giá tại thời điểm đặt (VND)
+        quantity:
+          type: integer
+    OrderDetail:
+      type: object
+      required:
+        - id
+        - code
+        - channel
+        - status
+        - subtotal
+        - discount
+        - total
+        - created_at
+        - items
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+        channel:
+          type: string
+          enum:
+            - website
+            - phone
+            - zalo
+            - fb
+        status:
+          type: string
+          enum:
+            - new
+            - confirmed
+            - delivering
+            - done
+            - cancelled
+        subtotal:
+          type: integer
+          format: int64
+        discount:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        delivery_date:
+          type: string
+          format: date
+          nullable: true
+        delivery_address:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderList:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        total:
+          type: integer
+          format: int64
+          description: Tổng số đơn (không phân trang)
+    OrderCreated:
+      type: object
+      required:
+        - id
+        - code
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Mã đơn sinh tự động, vd "MC-20260717-AB12"
+    OrderStatusInput:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Trạng thái mới. Hợp lệ- new | confirmed | delivering | done | cancelled
     Health:
       type: object
       required:
