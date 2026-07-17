@@ -1,0 +1,10 @@
+# golangci-lint v2 config (schema version 2). Bật linter có chủ đích để không
+# phụ thuộc bộ mặc định của từng máy/phiên bản.
+version: "2"
+
+linters:
+  enable:
+    - staticcheck   # gồm SA* (vd SA1019 deprecated API)
+    - govet
+    - errcheck
+    - ineffassign
