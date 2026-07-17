@@ -31,6 +31,14 @@
   --color-footer-border: #35507f;
   --color-footer-divider: #12305f;
   --color-footer-copy: #5e739c;
+
+  /* Card chrome — badge marketing & pill trạng thái (port § COLLECTION/FLAVORS) */
+  --color-badge-hot: #4c5a82; /* badge "Bán chạy" nền + kicker card */
+  --color-badge-gift-bg: #e4e8f2; /* badge "Quà biếu" nền */
+  --color-badge-gift-border: #7c88a6; /* badge "Quà biếu" viền */
+  --color-stock-in-text: #37624a; /* "Còn hàng" chữ */
+  --color-stock-in-dot: #4e7b60; /* "Còn hàng" chấm */
+  --color-stock-out-dot: #b7b2a8; /* "Hết hàng" chấm mờ */
 }
 
 /* Font variables được cấp qua next/font/google trong app/layout.tsx. */
