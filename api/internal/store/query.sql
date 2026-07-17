@@ -156,6 +156,13 @@ LIMIT $1 OFFSET $2;
 -- name: CountLeads :one
 SELECT count(*) FROM leads;
 
+-- name: GetLead :one
+-- Lấy 1 lead theo id (dùng cho convert lead → đơn: cần tên/SĐT/lời nhắn/nguồn/
+-- trạng thái để dựng đơn nháp và chặn convert 2 lần) (REQ-LEAD-005).
+SELECT id, name, phone, message, product_interest, source, status, created_at, order_id
+FROM leads
+WHERE id = $1;
+
 -- name: UpdateLeadStatus :one
 UPDATE leads
 SET status = $2

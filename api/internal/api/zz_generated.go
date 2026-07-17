@@ -6,10 +6,19 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+// Defines values for LeadStatus.
+const (
+	Closed    LeadStatus = "closed"
+	Contacted LeadStatus = "contacted"
+	Converted LeadStatus = "converted"
+	New       LeadStatus = "new"
 )
 
 // Defines values for ProductStatus.
@@ -32,6 +41,13 @@ type AdminMe struct {
 	Name  *string            `json:"name"`
 }
 
+// ConvertLeadResult defines model for ConvertLeadResult.
+type ConvertLeadResult struct {
+	// OrderCode Mã đơn sinh tự động, vd "MC-20260717-AB12"
+	OrderCode string             `json:"order_code"`
+	OrderId   openapi_types.UUID `json:"order_id"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Error string `json:"error"`
@@ -47,6 +63,26 @@ type ImageUploadResult struct {
 	// ImageUrl Đường dẫn public của ảnh, vd "/uploads/<uuid>.png"
 	ImageUrl string `json:"image_url"`
 }
+
+// Lead defines model for Lead.
+type Lead struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Message   *string            `json:"message"`
+	Name      string             `json:"name"`
+
+	// OrderId Đơn đã convert từ lead này (null nếu chưa convert)
+	OrderId         *openapi_types.UUID `json:"order_id"`
+	Phone           string              `json:"phone"`
+	ProductInterest *string             `json:"product_interest"`
+
+	// Source Nguồn lead (website | phone | zalo | fb | ...)
+	Source string     `json:"source"`
+	Status LeadStatus `json:"status"`
+}
+
+// LeadStatus defines model for Lead.Status.
+type LeadStatus string
 
 // LeadCreated defines model for LeadCreated.
 type LeadCreated struct {
@@ -66,6 +102,20 @@ type LeadInput struct {
 
 	// ProductInterest Sản phẩm khách quan tâm
 	ProductInterest *string `json:"product_interest"`
+}
+
+// LeadList defines model for LeadList.
+type LeadList struct {
+	Items []Lead `json:"items"`
+
+	// Total Tổng số lead (không phân trang)
+	Total int64 `json:"total"`
+}
+
+// LeadStatusInput defines model for LeadStatusInput.
+type LeadStatusInput struct {
+	// Status Trạng thái mới. Hợp lệ- new | contacted | converted | closed
+	Status string `json:"status"`
 }
 
 // LoginInput defines model for LoginInput.
@@ -138,10 +188,19 @@ type ProductInput struct {
 	Type string `json:"type"`
 }
 
+// ListAdminLeadsParams defines parameters for ListAdminLeads.
+type ListAdminLeadsParams struct {
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // UploadProductImageMultipartBody defines parameters for UploadProductImage.
 type UploadProductImageMultipartBody struct {
 	File openapi_types.File `json:"file"`
 }
+
+// UpdateLeadStatusJSONRequestBody defines body for UpdateLeadStatus for application/json ContentType.
+type UpdateLeadStatusJSONRequestBody = LeadStatusInput
 
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput
@@ -160,6 +219,15 @@ type CreateLeadJSONRequestBody = LeadInput
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Danh sách leads cho admin (phân trang)
+	// (GET /admin/leads)
+	ListAdminLeads(w http.ResponseWriter, r *http.Request, params ListAdminLeadsParams)
+	// Cập nhật trạng thái lead
+	// (PATCH /admin/leads/{id})
+	UpdateLeadStatus(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Convert lead thành đơn nháp
+	// (POST /admin/leads/{id}/convert)
+	ConvertLead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Thông tin admin đang đăng nhập
 	// (GET /admin/me)
 	GetAdminMe(w http.ResponseWriter, r *http.Request)
@@ -198,6 +266,24 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Danh sách leads cho admin (phân trang)
+// (GET /admin/leads)
+func (_ Unimplemented) ListAdminLeads(w http.ResponseWriter, r *http.Request, params ListAdminLeadsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Cập nhật trạng thái lead
+// (PATCH /admin/leads/{id})
+func (_ Unimplemented) UpdateLeadStatus(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Convert lead thành đơn nháp
+// (POST /admin/leads/{id}/convert)
+func (_ Unimplemented) ConvertLead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Thông tin admin đang đăng nhập
 // (GET /admin/me)
@@ -273,6 +359,91 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAdminLeads operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminLeads(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminLeadsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminLeads(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLeadStatus operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLeadStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLeadStatus(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConvertLead operation middleware
+func (siw *ServerInterfaceWrapper) ConvertLead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConvertLead(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetAdminMe operation middleware
 func (siw *ServerInterfaceWrapper) GetAdminMe(w http.ResponseWriter, r *http.Request) {
@@ -574,6 +745,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/leads", wrapper.ListAdminLeads)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/admin/leads/{id}", wrapper.UpdateLeadStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/leads/{id}/convert", wrapper.ConvertLead)
+	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/me", wrapper.GetAdminMe)
 	})

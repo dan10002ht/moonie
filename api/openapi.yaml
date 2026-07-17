@@ -136,6 +136,130 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/leads:
+    get:
+      operationId: listAdminLeads
+      summary: Danh sách leads cho admin (phân trang)
+      description: >-
+        Trả về leads phân trang, mới nhất trước (ORDER BY created_at DESC, id).
+        limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0.
+        Trả {items, total}. Cần auth admin (REQ-LEAD-004).
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Danh sách leads + tổng số
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadList"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/leads/{id}:
+    patch:
+      operationId: updateLeadStatus
+      summary: Cập nhật trạng thái lead
+      description: >-
+        Đổi trạng thái lead (new | contacted | converted | closed). Trạng thái
+        không hợp lệ → 400, không tìm thấy → 404. Cần auth admin (REQ-LEAD-004).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadStatusInput"
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "400":
+          description: Trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/leads/{id}/convert:
+    post:
+      operationId: convertLead
+      summary: Convert lead thành đơn nháp
+      description: >-
+        Tạo đơn NHÁP (status='new', tổng tiền 0) từ lead trong cùng transaction:
+        lấy tên/SĐT/lời nhắn lead ghi vào order.note, kênh map từ lead.source,
+        KHÔNG tạo customer (order.customer_id NULL). Đánh dấu lead.status='converted'
+        + lead.order_id. Sau commit bắn Telegram thông báo đơn mới (fail-safe).
+        Lead đã convert → 409. Cần auth admin (REQ-LEAD-005, REQ-NOTI-002).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "201":
+          description: Đã tạo đơn nháp từ lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertLeadResult"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Lead đã được convert trước đó
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/products:
     get:
       operationId: listAdminProducts
@@ -464,6 +588,81 @@ components:
         id:
           type: string
           format: uuid
+    Lead:
+      type: object
+      required:
+        - id
+        - name
+        - phone
+        - source
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        message:
+          type: string
+          nullable: true
+        product_interest:
+          type: string
+          nullable: true
+        source:
+          type: string
+          description: Nguồn lead (website | phone | zalo | fb | ...)
+        status:
+          type: string
+          enum:
+            - new
+            - contacted
+            - converted
+            - closed
+        created_at:
+          type: string
+          format: date-time
+        order_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Đơn đã convert từ lead này (null nếu chưa convert)
+    LeadList:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+        total:
+          type: integer
+          format: int64
+          description: Tổng số lead (không phân trang)
+    LeadStatusInput:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Trạng thái mới. Hợp lệ- new | contacted | converted | closed
+    ConvertLeadResult:
+      type: object
+      required:
+        - order_id
+        - order_code
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        order_code:
+          type: string
+          description: Mã đơn sinh tự động, vd "MC-20260717-AB12"
     Health:
       type: object
       required:

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -75,6 +76,57 @@ func (t *TelegramNotifier) NotifyNewLead(ctx context.Context, lead LeadInfo) err
 		return fmt.Errorf("notify telegram: unexpected status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// NotifyNewOrder POST chat_id + text tới sendMessage cho đơn mới (REQ-NOTI-002).
+// Cùng cơ chế fail-safe/không-lộ-token như NotifyNewLead.
+func (t *TelegramNotifier) NotifyNewOrder(ctx context.Context, order OrderInfo) error {
+	payload := map[string]string{
+		"chat_id": t.chatID,
+		"text":    formatOrderMessage(order),
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("notify telegram order: marshal payload: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", t.apiBase, t.token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("notify telegram order: build request: %w", stripURLError(err))
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("notify telegram order: request failed: %w", stripURLError(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return fmt.Errorf("notify telegram order: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// formatOrderMessage dựng nội dung tiếng Việt thông báo đơn mới cho chủ shop. Chứa
+// SĐT đầy đủ theo mục đích nghiệp vụ (chủ cần liên hệ khách).
+func formatOrderMessage(order OrderInfo) string {
+	var b strings.Builder
+	b.WriteString("🧾 Đơn mới — Mooni Cake\n")
+	b.WriteString("Mã đơn: " + order.Code)
+	if order.Name != "" {
+		b.WriteString("\nKhách: " + order.Name)
+	}
+	if order.Phone != "" {
+		b.WriteString("\nSĐT: " + order.Phone)
+	}
+	if order.Channel != "" {
+		b.WriteString("\nKênh: " + order.Channel)
+	}
+	b.WriteString("\nTổng: " + strconv.FormatInt(order.Total, 10) + "đ")
+	return b.String()
 }
 
 // stripURLError bóc *url.Error (Error() của nó chứa nguyên URL kèm bot token) và

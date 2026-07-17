@@ -405,6 +405,31 @@ func (q *Queries) GetCustomer(ctx context.Context, id pgtype.UUID) (Customer, er
 	return i, err
 }
 
+const getLead = `-- name: GetLead :one
+SELECT id, name, phone, message, product_interest, source, status, created_at, order_id
+FROM leads
+WHERE id = $1
+`
+
+// Lấy 1 lead theo id (dùng cho convert lead → đơn: cần tên/SĐT/lời nhắn/nguồn/
+// trạng thái để dựng đơn nháp và chặn convert 2 lần) (REQ-LEAD-005).
+func (q *Queries) GetLead(ctx context.Context, id pgtype.UUID) (Lead, error) {
+	row := q.db.QueryRow(ctx, getLead, id)
+	var i Lead
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Phone,
+		&i.Message,
+		&i.ProductInterest,
+		&i.Source,
+		&i.Status,
+		&i.CreatedAt,
+		&i.OrderID,
+	)
+	return i, err
+}
+
 const getOrder = `-- name: GetOrder :one
 SELECT id, code, customer_id, channel, status, subtotal, discount, total, delivery_date, delivery_address, note, created_at, updated_at
 FROM orders

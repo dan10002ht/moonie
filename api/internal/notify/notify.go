@@ -22,10 +22,22 @@ type LeadInfo struct {
 	ProductInterest string
 }
 
-// Notifier gửi thông báo lead mới. Trả error để caller log; caller PHẢI coi lỗi
-// notify là non-fatal (POST /leads vẫn thành công dù notify lỗi).
+// OrderInfo là dữ liệu đơn cần cho nội dung thông báo đơn mới (REQ-NOTI-002).
+// Tách khỏi model store để package notify không phụ thuộc tầng DB. Total tính bằng
+// VND (số nguyên); với đơn nháp convert-từ-lead Total = 0.
+type OrderInfo struct {
+	Code    string
+	Name    string
+	Phone   string
+	Total   int64
+	Channel string
+}
+
+// Notifier gửi thông báo lead mới hoặc đơn mới. Trả error để caller log; caller
+// PHẢI coi lỗi notify là non-fatal (nghiệp vụ vẫn thành công dù notify lỗi).
 type Notifier interface {
 	NotifyNewLead(ctx context.Context, lead LeadInfo) error
+	NotifyNewOrder(ctx context.Context, order OrderInfo) error
 }
 
 // NoopNotifier không gửi gì — dùng khi thiếu TELEGRAM_BOT_TOKEN. Log cảnh báo
@@ -35,6 +47,12 @@ type NoopNotifier struct{}
 // NotifyNewLead log "skip" và trả nil (no-op).
 func (NoopNotifier) NotifyNewLead(_ context.Context, lead LeadInfo) error {
 	log.Printf("notify skipped (no token): lead mới sđt=%s", maskPhone(lead.Phone))
+	return nil
+}
+
+// NotifyNewOrder log "skip" và trả nil (no-op).
+func (NoopNotifier) NotifyNewOrder(_ context.Context, order OrderInfo) error {
+	log.Printf("notify skipped (no token): đơn mới %s sđt=%s", order.Code, maskPhone(order.Phone))
 	return nil
 }
 

@@ -29,6 +29,11 @@ func (f *fakeNotifier) NotifyNewLead(_ context.Context, lead notify.LeadInfo) er
 	return f.err
 }
 
+// NotifyNewOrder thỏa interface notify.Notifier; test lead không dùng tới nên no-op.
+func (f *fakeNotifier) NotifyNewOrder(_ context.Context, _ notify.OrderInfo) error {
+	return nil
+}
+
 func validLeadRow() store.CreateLeadRow {
 	rawID := [16]byte{0x2d, 0xe8, 0x5a, 0xe8, 0xb1, 0xa8, 0x4d, 0xd7, 0xb8, 0xc3, 0x20, 0xdc, 0xf8, 0xb0, 0x4d, 0xeb}
 	return store.CreateLeadRow{ID: pgtype.UUID{Bytes: rawID, Valid: true}, Status: "new"}
