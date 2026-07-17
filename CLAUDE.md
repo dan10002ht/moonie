@@ -87,6 +87,19 @@ Mỗi feature đi theo pipeline, KHÔNG bỏ bước:
 
 Nguyên tắc harness: mỗi scaffold là một giả định model không tự làm được — thấy không còn cần thì gỡ. Giữ mọi thứ đơn giản nhất có thể.
 
+## Chế độ chạy: XUYÊN SUỐT (mặc định — chốt 2026-07-17)
+
+Harness tự chạy liên tục qua các giai đoạn, không chờ duyệt giữa chừng:
+
+- Hết task một giai đoạn → tự viết plan giai đoạn kế (skill writing-plans, bám spec + `docs/ba/02-SRS.md`) → đổ task vào BRIEF.md → chạy tiếp. Plan được đối chiếu với spec trước khi chạy: mọi task phải trace về REQ/mục spec cụ thể; task không trace được = không được thêm.
+- Chuyển giai đoạn: cập nhật PROGRESS.md + dispatch ba-writer + gửi user báo cáo tóm tắt (kèm screenshot nếu có UI) — báo cáo là FYI, không chờ trả lời.
+- CHỈ dừng hỏi user khi gặp 1 trong 4 điều:
+  1. Quyết định nghiệp vụ chưa có trong spec/BA docs (không được đoán thay chủ dự án);
+  2. Thiếu tài nguyên chỉ user có: ảnh sản phẩm thật, Telegram bot token, VPS/domain, nội dung giá;
+  3. Security-review ra finding mức cao;
+  4. **Circuit breaker**: một task fail evaluator 3 lần liên tiếp → ghi blocker chi tiết vào BRIEF.md, chuyển sang task độc lập kế tiếp; nếu blocker chặn cả dây chuyền thì dừng và báo user.
+- Gặp điểm dừng: ghi rõ lý do vào BRIEF.md ngay dưới task, các task không phụ thuộc vẫn chạy tiếp.
+
 ## Vòng lặp task (BRIEF.md — file-driven task loop)
 
 `BRIEF.md` là hàng đợi task duy nhất. Định dạng: `[ ]` chưa làm · `[⏳]` đang làm · `[✅]` xong.
