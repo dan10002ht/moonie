@@ -233,7 +233,7 @@ export function OrderDetailDialog({
               )}
             </dl>
 
-            <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-x-auto rounded-xl border border-border">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
