@@ -4,7 +4,7 @@ import "./globals.css";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
-  subsets: ["latin"],
+  subsets: ["vietnamese", "latin"],
   display: "swap",
 });
 
