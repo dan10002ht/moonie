@@ -130,7 +130,9 @@ func newRouter(pool *pgxpool.Pool) http.Handler {
 // leadsRateLimit là ngưỡng rate limit cho POST /leads: số request tối đa mỗi IP
 // trong mỗi cửa sổ leadsRateWindow.
 const (
-	leadsRateLimit  = 5
+	// 20/phút/IP: đủ cho khách doanh nghiệp sau 1 IP NAT chung (nhiều nhân viên
+	// cùng hỏi hàng) mà vẫn chặn bot/abuse (20/phút rất thấp với bot).
+	leadsRateLimit  = 20
 	leadsRateWindow = time.Minute
 )
 
