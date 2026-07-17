@@ -137,7 +137,7 @@ func TestMaskPhone(t *testing.T) {
 // route khác (path khác) không bị ảnh hưởng.
 func TestLeadsRateLimit(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusCreated) })
-	h := rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter())(next)
+	h := rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter(testClientIP().RateLimitKey))(next)
 
 	fire := func(path string) int {
 		rec := httptest.NewRecorder()

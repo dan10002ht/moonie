@@ -111,10 +111,18 @@ export function getProducts(): Promise<Product[]> {
  * Ném `ApiError` khi thất bại — caller phân biệt theo `status`:
  *   - 400: dữ liệu không hợp lệ (message lấy từ body `{error}`).
  *   - 429: gửi quá nhiều yêu cầu (rate limit) — nên báo khách thử lại sau.
+ *
+ * `clientIp` (tuỳ chọn): IP khách thật do Server Action đọc từ request đến Next,
+ * forward qua `X-Forwarded-For` để Go rate-limit theo IP khách (không phải IP
+ * Next). Chỉ có tác dụng khi Go tin Next là proxy (TRUSTED_PROXIES).
  */
-export function createLead(input: LeadInput): Promise<LeadCreated> {
+export function createLead(
+  input: LeadInput,
+  clientIp?: string | null,
+): Promise<LeadCreated> {
   return apiFetch<LeadCreated>("/leads", {
     method: "POST",
     body: JSON.stringify(input),
+    headers: clientIp ? { "X-Forwarded-For": clientIp } : undefined,
   });
 }

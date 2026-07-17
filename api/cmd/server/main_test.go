@@ -8,11 +8,22 @@ import (
 	"time"
 
 	"github.com/moonie/api/internal/auth"
+	"github.com/moonie/api/internal/httpx"
 	"github.com/moonie/api/internal/notify"
 )
 
+// testClientIP dựng resolver KHÔNG tin proxy nào → khoá rate limit theo RemoteAddr
+// (hành vi mặc định cho test, giống trước khi có TRUSTED_PROXIES).
+func testClientIP() *httpx.ClientIPResolver {
+	r, err := httpx.NewClientIPResolver(nil)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
 func TestRouter(t *testing.T) {
-	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir())
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir(), testClientIP())
 
 	tests := []struct {
 		name       string
@@ -55,7 +66,7 @@ func TestRouter(t *testing.T) {
 // (lỗi bind param xảy ra SAU auth, trong wrapper oapi).
 func TestParamBindErrorJSON(t *testing.T) {
 	secret := []byte("test-secret-32-bytes-minimum-000")
-	handler := newRouter(nil, notify.NoopNotifier{}, secret, false, t.TempDir())
+	handler := newRouter(nil, notify.NoopNotifier{}, secret, false, t.TempDir(), testClientIP())
 
 	token, err := auth.Sign("00000000-0000-0000-0000-000000000001", secret, time.Hour)
 	if err != nil {

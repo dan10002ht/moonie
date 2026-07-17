@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-18
+
+### CI
+- **fix(web)** — CI web `npm ci` fail trên runner linux: lock sinh trên darwin thiếu native binary theo platform của Tailwind v4 (`@tailwindcss/oxide-linux-x64-gnu/musl`, optionalDependencies os/cpu). Chuyển web install (CI + Dockerfile) sang `npm install --no-audit --no-fund` (vẫn theo lock cho dep nhất quán, chỉ reconcile native binary). CI xanh trở lại. Commit `46cedca`.
+
+### Giai đoạn 6 — Deploy (hardening)
+- **Task 0** — Rate-limit theo IP client THẬT sau reverse proxy: `ClientIPResolver` (`api/internal/httpx/clientip.go`) — RemoteAddr không-trusted → bỏ qua X-Forwarded-For (chống spoof); trusted → lấy rightmost-non-trusted của XFF. Config `TRUSTED_PROXIES` (CSV IP/CIDR, fail-fast lúc boot). 2 rate limiter (leads 20/phút + login 10/phút) dùng chung resolver. Next forward XFF cho `/leads` + `/auth/login` (`web/lib/client-ip.ts`, `web/lib/api.ts`, `web/app/actions/{lead,admin}.ts`). Held-out 13/13 + go-reviewer PASS. ⚠️ prod BẮT BUỘC set TRUSTED_PROXIES. Commit chờ.
+
 ## 2026-07-17
 
 ### Giai đoạn 1 — Scaffold

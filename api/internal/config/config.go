@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Config chứa toàn bộ cấu hình runtime của API, nạp từ env.
@@ -20,6 +21,12 @@ type Config struct {
 	// UploadsDir là thư mục lưu ảnh sản phẩm upload (REQ-PROD-003). Mặc định
 	// "./uploads". Production mount volume vào đường dẫn này (nằm trong backup).
 	UploadsDir string
+	// TrustedProxies là danh sách IP/CIDR của reverse proxy tin cậy (Caddy/Next),
+	// tách từ TRUSTED_PROXIES (phân tách bằng dấu phẩy). Chỉ khi peer TCP nằm trong
+	// danh sách này thì API mới đọc X-Forwarded-For để lấy IP client thật cho rate
+	// limit (NFR-006, M1). Rỗng = không tin proxy nào → rate limit theo RemoteAddr
+	// (default an toàn cho dev, chống spoof header).
+	TrustedProxies []string
 }
 
 // IsProduction cho biết có đang chạy ở môi trường production hay không (AppEnv
@@ -90,5 +97,22 @@ func Load() (*Config, error) {
 		Port:             port,
 		AppEnv:           os.Getenv("APP_ENV"),
 		UploadsDir:       uploadsDir,
+		TrustedProxies:   parseCSVList(os.Getenv("TRUSTED_PROXIES")),
 	}, nil
+}
+
+// parseCSVList tách chuỗi phân tách bằng dấu phẩy thành slice đã trim, bỏ phần tử
+// rỗng. Chuỗi rỗng → slice nil. Dùng cho TRUSTED_PROXIES.
+func parseCSVList(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if v := strings.TrimSpace(p); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }

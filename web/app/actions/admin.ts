@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { components } from "@/types/api";
 import { API_BASE, ApiError } from "@/lib/api";
+import { clientIpFromRequest } from "@/lib/client-ip";
 import { ADMIN_COOKIE, adminFetch } from "@/lib/admin-api";
 
 /** 3 chỉ số tổng quan dashboard (schema `Dashboard` sinh từ OpenAPI). */
@@ -107,11 +108,18 @@ export async function loginAction(
   email: string,
   password: string,
 ): Promise<LoginResult> {
+  // Forward IP khách thật để Go rate-limit brute-force login theo IP khách (M1),
+  // không phải IP Next. Chỉ có tác dụng khi Go tin Next là proxy (TRUSTED_PROXIES).
+  const clientIp = await clientIpFromRequest();
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+      },
       body: JSON.stringify({ email, password }),
       cache: "no-store",
     });

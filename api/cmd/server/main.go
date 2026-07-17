@@ -4,8 +4,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -92,9 +92,16 @@ func run() error {
 	}
 	defer pool.Close()
 
+	// Resolver IP client thật sau reverse proxy tin cậy (rate limit theo IP khách,
+	// không phải IP proxy). Sai định dạng TRUSTED_PROXIES → fail-fast lúc khởi động.
+	clientIP, err := httpx.NewClientIPResolver(cfg.TrustedProxies)
+	if err != nil {
+		return fmt.Errorf("cấu hình TRUSTED_PROXIES không hợp lệ: %w", err)
+	}
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction(), cfg.UploadsDir),
+		Handler:           newRouter(pool, newNotifier(cfg), []byte(cfg.JWTSecret), cfg.IsProduction(), cfg.UploadsDir, clientIP),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -125,7 +132,7 @@ func run() error {
 
 // newRouter dựng chi router với middleware và các route. Tách riêng để test được.
 // pool có thể nil trong test không cần DB (healthz không chạm DB).
-func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool, uploadsDir string) http.Handler {
+func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, secureCookie bool, uploadsDir string, clientIP *httpx.ClientIPResolver) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -141,12 +148,12 @@ func newRouter(pool *pgxpool.Pool, notifier notify.Notifier, jwtSecret []byte, s
 
 	// Rate limit CHỈ cho POST /api/v1/leads (chống spam form) — không đụng
 	// /healthz, /products (REQ-LEAD-001). Ngưỡng: leadsRateLimit req/phút/IP.
-	r.Use(rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter()))
+	r.Use(rateLimitPath(http.MethodPost, "/api/v1/leads", newLeadsRateLimiter(clientIP.RateLimitKey)))
 
 	// Rate limit CHỈ cho POST /api/v1/auth/login (chống brute-force mật khẩu, M1)
 	// — không đụng /auth/logout, /admin/*, /products. Ngưỡng THẤP hơn /leads vì
 	// login nhạy cảm: loginRateLimit req/phút/IP. Vượt → 429 JSON {error}.
-	r.Use(rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter()))
+	r.Use(rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter(clientIP.RateLimitKey)))
 
 	// Auth: bảo vệ CHỈ nhóm /api/v1/admin/* bằng middleware JWT cookie. Các route
 	// /auth/login, /auth/logout, /products, /leads, /healthz KHÔNG qua middleware
@@ -263,13 +270,14 @@ const (
 	leadsRateWindow = time.Minute
 )
 
-// newLeadsRateLimiter tạo middleware httprate giới hạn theo IP, trả 429 JSON
-// {error} khi vượt ngưỡng (NFR-006).
-func newLeadsRateLimiter() func(http.Handler) http.Handler {
+// newLeadsRateLimiter tạo middleware httprate giới hạn theo IP client (keyFn),
+// trả 429 JSON {error} khi vượt ngưỡng (NFR-006). keyFn do ClientIPResolver cấp
+// để rate limit theo IP khách thật sau reverse proxy tin cậy.
+func newLeadsRateLimiter(keyFn httprate.KeyFunc) func(http.Handler) http.Handler {
 	return httprate.LimitBy(
 		leadsRateLimit,
 		leadsRateWindow,
-		keyByRemoteIP,
+		keyFn,
 		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
 			httpx.WriteError(w, http.StatusTooManyRequests, "bạn gửi quá nhiều yêu cầu, vui lòng thử lại sau ít phút")
 		}),
@@ -281,34 +289,24 @@ func newLeadsRateLimiter() func(http.Handler) http.Handler {
 const (
 	// 10/phút/IP: thấp hơn leads vì login nhạy cảm — đủ cho người dùng gõ nhầm
 	// mật khẩu vài lần mà vẫn bóp nghẹt brute-force tự động (M1). Cùng cơ chế
-	// httprate theo RemoteAddr như /leads; sau reverse proxy cần đổi sang IP thật
-	// (GĐ6, đã ghi backlog).
+	// httprate; khoá theo IP client thật do ClientIPResolver giải (an toàn sau
+	// reverse proxy tin cậy — GĐ6 Task 0).
 	loginRateLimit  = 10
 	loginRateWindow = time.Minute
 )
 
-// newLoginRateLimiter tạo middleware httprate giới hạn login theo IP, trả 429 JSON
-// {error} khi vượt ngưỡng — chống brute-force mật khẩu admin (M1).
-func newLoginRateLimiter() func(http.Handler) http.Handler {
+// newLoginRateLimiter tạo middleware httprate giới hạn login theo IP client
+// (keyFn), trả 429 JSON {error} khi vượt ngưỡng — chống brute-force mật khẩu admin
+// (M1). keyFn do ClientIPResolver cấp để lấy IP khách thật sau reverse proxy.
+func newLoginRateLimiter(keyFn httprate.KeyFunc) func(http.Handler) http.Handler {
 	return httprate.LimitBy(
 		loginRateLimit,
 		loginRateWindow,
-		keyByRemoteIP,
+		keyFn,
 		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
 			httpx.WriteError(w, http.StatusTooManyRequests, "bạn thử đăng nhập quá nhiều lần, vui lòng thử lại sau ít phút")
 		}),
 	)
-}
-
-// keyByRemoteIP khoá rate limit theo IP peer TCP (r.RemoteAddr) — không giả mạo
-// được qua header. Hợp mô hình 1 VPS hiện tại; khi đặt sau reverse proxy (Caddy)
-// ở production cần chuyển sang IP giải mã bởi middleware.ClientIPFrom* (deploy).
-func keyByRemoteIP(r *http.Request) (string, error) {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr
-	}
-	return httprate.CanonicalizeIP(ip), nil
 }
 
 // rateLimitPath áp middleware mw CHỈ khi request khớp method + path chỉ định; các

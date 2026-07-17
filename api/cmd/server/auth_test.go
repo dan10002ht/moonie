@@ -230,7 +230,7 @@ func TestGetAdminMe(t *testing.T) {
 // cookie) và KHÔNG gác /auth/login, /healthz, /products. Không cần DB: request bị
 // chặn ở middleware trước khi chạm handler.
 func TestAdminRouteGuarded(t *testing.T) {
-	router := newRouter(nil, nil, []byte(testSecret), false, t.TempDir())
+	router := newRouter(nil, nil, []byte(testSecret), false, t.TempDir(), testClientIP())
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/me", nil))
@@ -260,7 +260,7 @@ func TestLoginRateLimit(t *testing.T) {
 	// next giả lập handler thật trả 200 (không đụng verify password/cookie): ta chỉ
 	// kiểm lớp rate limit đứng TRƯỚC handler.
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-	h := rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter())(next)
+	h := rateLimitPath(http.MethodPost, "/api/v1/auth/login", newLoginRateLimiter(testClientIP().RateLimitKey))(next)
 
 	fire := func(method, path string) int {
 		rec := httptest.NewRecorder()

@@ -1,6 +1,7 @@
 "use server";
 
 import { ApiError, createLead, type LeadInput } from "@/lib/api";
+import { clientIpFromRequest } from "@/lib/client-ip";
 
 /**
  * Kết quả gửi lead — trả về client (ContactSheet) để map thành thông báo.
@@ -18,7 +19,8 @@ export type LeadResult =
  */
 export async function submitLead(input: LeadInput): Promise<LeadResult> {
   try {
-    await createLead(input);
+    const clientIp = await clientIpFromRequest();
+    await createLead(input, clientIp);
     return { ok: true };
   } catch (err) {
     if (err instanceof ApiError) {

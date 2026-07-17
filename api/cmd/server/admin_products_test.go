@@ -183,7 +183,7 @@ func TestUploadsStaticServe(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "img.png"), pngBytes(), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, dir)
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, dir, testClientIP())
 
 	t.Run("file cụ thể → 200 + nosniff", func(t *testing.T) {
 		rec := httptest.NewRecorder()
@@ -387,7 +387,7 @@ func TestUploadProductImageProductNotFound(t *testing.T) {
 // TestAdminProductsRequireAuth: mọi route /admin/products KHÔNG cookie → 401
 // (middleware auth gác, chưa chạm handler/store).
 func TestAdminProductsRequireAuth(t *testing.T) {
-	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir())
+	handler := newRouter(nil, notify.NoopNotifier{}, []byte("test-secret-32-bytes-minimum-000"), false, t.TempDir(), testClientIP())
 	routes := []struct {
 		method, path string
 	}{

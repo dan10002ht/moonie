@@ -23,8 +23,12 @@ func TestLoad(t *testing.T) {
 				"TELEGRAM_CHAT_ID":   "chat-id",
 				"TELEGRAM_API_BASE":  "http://localhost:1234",
 				"PORT":               "9090",
+				"TRUSTED_PROXIES":    "10.0.0.0/8, 172.16.0.1 ,",
 			},
 			check: func(t *testing.T, c *config.Config) {
+				if len(c.TrustedProxies) != 2 || c.TrustedProxies[0] != "10.0.0.0/8" || c.TrustedProxies[1] != "172.16.0.1" {
+					t.Errorf("TrustedProxies = %#v, want [10.0.0.0/8 172.16.0.1]", c.TrustedProxies)
+				}
 				if c.TelegramAPIBase != "http://localhost:1234" {
 					t.Errorf("TelegramAPIBase = %q", c.TelegramAPIBase)
 				}
@@ -57,6 +61,9 @@ func TestLoad(t *testing.T) {
 				if c.TelegramAPIBase != "https://api.telegram.org" {
 					t.Errorf("TelegramAPIBase = %q, want default https://api.telegram.org", c.TelegramAPIBase)
 				}
+				if len(c.TrustedProxies) != 0 {
+					t.Errorf("TrustedProxies = %#v, want empty (default)", c.TrustedProxies)
+				}
 			},
 		},
 		{
@@ -68,7 +75,7 @@ func TestLoad(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all relevant env then set test env.
-			for _, k := range []string{"DATABASE_URL", "JWT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_API_BASE", "PORT"} {
+			for _, k := range []string{"DATABASE_URL", "JWT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_API_BASE", "PORT", "TRUSTED_PROXIES"} {
 				t.Setenv(k, "")
 			}
 			for k, v := range tt.env {

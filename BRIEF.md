@@ -148,7 +148,11 @@ Backlog UI: mobile-table card layout (recurring, không chặn — admin desktop
 
 ## Giai đoạn 6 — Deploy (task đã chốt trước)
 
-0. [ ] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch.
+0. [✅] **Rate-limit real client IP behind proxy** (phát hiện GĐ3 Task 4): form submit đi qua Next Server Action → Go API thấy RemoteAddr = IP Next server, không phải client → rate limit 20/phút bị chia CHUNG toàn site + mất bảo vệ per-IP. Fix khi deploy: Caddy same-origin proxy /api + Go tin X-Forwarded-For TỪ trusted proxy (Caddy/Next) để lấy client IP thật. Phải xong trước launch.
+   - Files: `api/internal/httpx/clientip.go` (ClientIPResolver: RemoteAddr không-trusted → BỎ QUA XFF chống spoof; trusted → rightmost-non-trusted của XFF), config `TRUSTED_PROXIES` (CSV IP/CIDR, fail-fast lúc boot), `api/cmd/server/main.go` (2 rate limiter dùng chung resolver.RateLimitKey), `web/lib/client-ip.ts` + `web/lib/api.ts` + `web/app/actions/{lead,admin}.ts` (Next forward X-Forwarded-For cho /leads + /auth/login). `.env.example` thêm TRUSTED_PROXIES.
+   - Gate: HELD-OUT 13/13 PASS (`tests/heldout/giai-doan-6-task-0-real-ip_test.sh` — 3 config cô lập: rightmost-non-trusted, spoof-guard, default an toàn, cả /leads + /auth/login). go-reviewer VERDICT PASS (make lint 0 issues, make test all pass, phân tích spoof/CIDR/IPv6/panic sạch).
+   - ⚠️ FOOTGUN VẬN HÀNH: production BẮT BUỘC set `TRUSTED_PROXIES` = dải Caddy/Next thật; để trống ở prod → toàn site rate-limit theo IP proxy. Ghi vào runbook (Task 1).
+   - Backlog robustness (go-reviewer minor, không chặn): entry XFF có port → thử ParseAddrPort; entry rác → `continue` thay vì fallback; thêm ca test IPv6/IPv4-mapped lấy từ XFF.
 0b. [ ] **Security deploy-gate GĐ6** (từ security-review tổng GĐ4 — MEDIUM/LOW, không chặn đóng GĐ4):
    - BẮT BUỘC trước production: đổi mật khẩu admin mặc định (đặt SEED_ADMIN_PASSWORD, không dùng 'mooni-admin') — nếu bỏ qua, brute-force login thành CRITICAL.
    - APP_ENV=production để cookie Secure=true; reverse proxy ép HTTPS + HSTS (M2).
