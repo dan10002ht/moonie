@@ -100,7 +100,7 @@ Plan: `docs/superpowers/plans/2026-07-17-giai-doan-4-admin-api.md`. Feature API 
    - Files: internal/auth (jwt HS256 chống alg-confusion, password bcrypt, middleware cookie mc_admin), cmd/server/auth.go (Login/Logout/GetAdminMe, chống user-enumeration + timing), main.go mount /admin/* + reject JWT_SECRET yếu, proxy.ts guard. Commit 7b6b2ab → e8b7bb5.
    - Gate: HELD-OUT 16/16 (login→cookie httpOnly/SameSite, sai pass 401, /admin/me bảo vệ, cookie giả 401, không register). go-reviewer PASS + thử tấn công thật (alg=none/confusion/hết hạn/path-confusion/enumeration đều chặn) → fix reject JWT_SECRET placeholder/<32 (defense-in-depth deploy).
    - CSRF + prefix-guard convention: ghi scope security-review Task 7.
-3. [ ] Task 3 — Admin products CRUD + upload ảnh (REQ-PROD-002/003)
+3. [⏳] Task 3 — Admin products CRUD + upload ảnh (REQ-PROD-002/003)
 4. [ ] Task 4 — Admin leads list paginated + status + convert→order (REQ-LEAD-004/005)
 5. [ ] Task 5 — Admin orders create(transaction+snapshot) + list + status + Telegram (REQ-ORD, REQ-NOTI-002)
 6. [ ] Task 6 — Admin customers CRUD paginated (REQ-CUST-001)
