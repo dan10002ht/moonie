@@ -413,6 +413,154 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/customers:
+    get:
+      operationId: listAdminCustomers
+      summary: Danh sách khách hàng cho admin (phân trang)
+      description: >-
+        Trả về khách hàng phân trang, mới nhất trước (ORDER BY created_at DESC, id).
+        limit mặc định 20, tối đa 100 (vượt bị kẹp về 100); offset mặc định 0.
+        Trả {items, total}. Cần auth admin (REQ-CUST-001).
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Danh sách khách hàng + tổng số
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerList"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createCustomer
+      summary: Tạo khách hàng
+      description: >-
+        Tạo khách hàng. Validate ở handler TRƯỚC khi chạm DB: name không rỗng,
+        type ∈ {personal, business} (sai → 400, không để CHECK constraint bung 500),
+        phone nếu có phải đúng định dạng VN, email nếu có phải chứa @ và domain,
+        độ dài các trường hợp lý. Cần auth admin (REQ-CUST-001).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Đã tạo khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerCreated"
+        "400":
+          description: Dữ liệu vào không hợp lệ (name rỗng, type sai, phone/email sai định dạng)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/customers/{id}:
+    get:
+      operationId: getAdminCustomer
+      summary: Chi tiết khách hàng
+      description: >-
+        Trả chi tiết một khách hàng theo id. Không tìm thấy → 404. Cần auth admin
+        (REQ-CUST-001).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chi tiết khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: updateCustomer
+      summary: Cập nhật khách hàng
+      description: >-
+        Cập nhật toàn bộ thuộc tính khách hàng theo id. Validate như tạo mới
+        (name không rỗng, type enum, phone/email định dạng). Không tìm thấy → 404.
+        Cần auth admin (REQ-CUST-001).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "200":
+          description: Đã cập nhật khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          description: Dữ liệu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/products:
     get:
       operationId: listAdminProducts
@@ -1051,6 +1199,96 @@ components:
         status:
           type: string
           description: Trạng thái mới. Hợp lệ- new | confirmed | delivering | done | cancelled
+    CustomerInput:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: Tên khách hàng, bắt buộc, không rỗng
+        phone:
+          type: string
+          nullable: true
+          description: SĐT Việt Nam (tùy chọn). Nếu có phải đúng định dạng VN.
+        email:
+          type: string
+          nullable: true
+          description: Email (tùy chọn). Nếu có phải chứa @ và domain.
+        company:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum:
+            - personal
+            - business
+          description: Loại khách. Sai enum → 400.
+        note:
+          type: string
+          nullable: true
+    Customer:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum:
+            - personal
+            - business
+        note:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    CustomerList:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        total:
+          type: integer
+          format: int64
+          description: Tổng số khách hàng (không phân trang)
+    CustomerCreated:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
     Health:
       type: object
       required:

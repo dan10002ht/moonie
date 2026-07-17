@@ -13,6 +13,18 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CustomerType.
+const (
+	CustomerTypeBusiness CustomerType = "business"
+	CustomerTypePersonal CustomerType = "personal"
+)
+
+// Defines values for CustomerInputType.
+const (
+	CustomerInputTypeBusiness CustomerInputType = "business"
+	CustomerInputTypePersonal CustomerInputType = "personal"
+)
+
 // Defines values for LeadStatus.
 const (
 	LeadStatusClosed    LeadStatus = "closed"
@@ -88,6 +100,57 @@ type ConvertLeadResult struct {
 	// OrderCode Mã đơn sinh tự động, vd "MC-20260717-AB12"
 	OrderCode string             `json:"order_code"`
 	OrderId   openapi_types.UUID `json:"order_id"`
+}
+
+// Customer defines model for Customer.
+type Customer struct {
+	Address   *string            `json:"address"`
+	Company   *string            `json:"company"`
+	CreatedAt time.Time          `json:"created_at"`
+	Email     *string            `json:"email"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	Note      *string            `json:"note"`
+	Phone     *string            `json:"phone"`
+	Type      CustomerType       `json:"type"`
+}
+
+// CustomerType defines model for Customer.Type.
+type CustomerType string
+
+// CustomerCreated defines model for CustomerCreated.
+type CustomerCreated struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+// CustomerInput defines model for CustomerInput.
+type CustomerInput struct {
+	Address *string `json:"address"`
+	Company *string `json:"company"`
+
+	// Email Email (tùy chọn). Nếu có phải chứa @ và domain.
+	Email *string `json:"email"`
+
+	// Name Tên khách hàng, bắt buộc, không rỗng
+	Name string  `json:"name"`
+	Note *string `json:"note"`
+
+	// Phone SĐT Việt Nam (tùy chọn). Nếu có phải đúng định dạng VN.
+	Phone *string `json:"phone"`
+
+	// Type Loại khách. Sai enum → 400.
+	Type CustomerInputType `json:"type"`
+}
+
+// CustomerInputType Loại khách. Sai enum → 400.
+type CustomerInputType string
+
+// CustomerList defines model for CustomerList.
+type CustomerList struct {
+	Items []Customer `json:"items"`
+
+	// Total Tổng số khách hàng (không phân trang)
+	Total int64 `json:"total"`
 }
 
 // Error defines model for Error.
@@ -339,6 +402,12 @@ type ProductInput struct {
 	Type string `json:"type"`
 }
 
+// ListAdminCustomersParams defines parameters for ListAdminCustomers.
+type ListAdminCustomersParams struct {
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListAdminLeadsParams defines parameters for ListAdminLeads.
 type ListAdminLeadsParams struct {
 	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -355,6 +424,12 @@ type ListAdminOrdersParams struct {
 type UploadProductImageMultipartBody struct {
 	File openapi_types.File `json:"file"`
 }
+
+// CreateCustomerJSONRequestBody defines body for CreateCustomer for application/json ContentType.
+type CreateCustomerJSONRequestBody = CustomerInput
+
+// UpdateCustomerJSONRequestBody defines body for UpdateCustomer for application/json ContentType.
+type UpdateCustomerJSONRequestBody = CustomerInput
 
 // UpdateLeadStatusJSONRequestBody defines body for UpdateLeadStatus for application/json ContentType.
 type UpdateLeadStatusJSONRequestBody = LeadStatusInput
@@ -382,6 +457,18 @@ type CreateLeadJSONRequestBody = LeadInput
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Danh sách khách hàng cho admin (phân trang)
+	// (GET /admin/customers)
+	ListAdminCustomers(w http.ResponseWriter, r *http.Request, params ListAdminCustomersParams)
+	// Tạo khách hàng
+	// (POST /admin/customers)
+	CreateCustomer(w http.ResponseWriter, r *http.Request)
+	// Chi tiết khách hàng
+	// (GET /admin/customers/{id})
+	GetAdminCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Cập nhật khách hàng
+	// (PUT /admin/customers/{id})
+	UpdateCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Danh sách leads cho admin (phân trang)
 	// (GET /admin/leads)
 	ListAdminLeads(w http.ResponseWriter, r *http.Request, params ListAdminLeadsParams)
@@ -441,6 +528,30 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Danh sách khách hàng cho admin (phân trang)
+// (GET /admin/customers)
+func (_ Unimplemented) ListAdminCustomers(w http.ResponseWriter, r *http.Request, params ListAdminCustomersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tạo khách hàng
+// (POST /admin/customers)
+func (_ Unimplemented) CreateCustomer(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Chi tiết khách hàng
+// (GET /admin/customers/{id})
+func (_ Unimplemented) GetAdminCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Cập nhật khách hàng
+// (PUT /admin/customers/{id})
+func (_ Unimplemented) UpdateCustomer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Danh sách leads cho admin (phân trang)
 // (GET /admin/leads)
@@ -558,6 +669,105 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAdminCustomers operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminCustomers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminCustomersParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminCustomers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCustomer operation middleware
+func (siw *ServerInterfaceWrapper) CreateCustomer(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCustomer(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminCustomer operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminCustomer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminCustomer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCustomer operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCustomer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCustomer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListAdminLeads operation middleware
 func (siw *ServerInterfaceWrapper) ListAdminLeads(w http.ResponseWriter, r *http.Request) {
@@ -1043,6 +1253,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/customers", wrapper.ListAdminCustomers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/customers", wrapper.CreateCustomer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/customers/{id}", wrapper.GetAdminCustomer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/customers/{id}", wrapper.UpdateCustomer)
+	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/leads", wrapper.ListAdminLeads)
 	})
