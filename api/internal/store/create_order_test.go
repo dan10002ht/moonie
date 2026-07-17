@@ -11,6 +11,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/moonie/api/internal/store"
@@ -143,6 +144,82 @@ func TestCreateOrderWithItemsDiscountExceeds(t *testing.T) {
 	})
 	if !errors.Is(err, store.ErrDiscountExceedsSubtotal) {
 		t.Fatalf("err = %v, want ErrDiscountExceedsSubtotal", err)
+	}
+}
+
+// TestCreateOrderWithItemsAmountOverflow: giá × số lượng dồn vượt trần MaxOrderAmount
+// → ErrOrderAmountTooLarge (chống tràn int64 bigint), KHÔNG tạo đơn.
+func TestCreateOrderWithItemsAmountOverflow(t *testing.T) {
+	pool := newTestDB(t)
+	q := store.New(pool)
+	ctx := context.Background()
+
+	// Giá gần trần: 9 tỷ. Quantity 2 → 18 tỷ > MaxOrderAmount (10 tỷ) → chặn.
+	var p pgtype.UUID
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO products (slug, name, price, type, status)
+		 VALUES ('banh-vip', 'Bánh siêu VIP', 9000000000, 'single_cake', 'available') RETURNING id`).Scan(&p); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	before, err := q.CountOrders(ctx)
+	if err != nil {
+		t.Fatalf("CountOrders before: %v", err)
+	}
+	_, err = store.CreateOrderWithItems(ctx, pool, store.CreateOrderWithItemsParams{
+		Code:    "MC-20260717-OVF1",
+		Channel: "website",
+		Items:   []store.OrderItemInput{{ProductID: p, Quantity: 2}},
+	})
+	if !errors.Is(err, store.ErrOrderAmountTooLarge) {
+		t.Fatalf("err = %v, want ErrOrderAmountTooLarge", err)
+	}
+	after, err := q.CountOrders(ctx)
+	if err != nil {
+		t.Fatalf("CountOrders after: %v", err)
+	}
+	if after != before {
+		t.Errorf("CountOrders = %d, want %d (không tạo đơn khi vượt trần)", after, before)
+	}
+}
+
+// TestCreateOrderWithItemsCustomerFK: customer_id không tồn tại → FK violation (23503)
+// nổi lên nguyên trạng để handler map 400 (không tạo đơn một phần).
+func TestCreateOrderWithItemsCustomerFK(t *testing.T) {
+	pool := newTestDB(t)
+	q := store.New(pool)
+	ctx := context.Background()
+
+	var p pgtype.UUID
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO products (slug, name, price, type, status)
+		 VALUES ('banh-fk', 'Bánh FK', 100000, 'single_cake', 'available') RETURNING id`).Scan(&p); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	before, err := q.CountOrders(ctx)
+	if err != nil {
+		t.Fatalf("CountOrders before: %v", err)
+	}
+
+	badCustomer := pgtype.UUID{Bytes: [16]byte{7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}, Valid: true}
+	_, err = store.CreateOrderWithItems(ctx, pool, store.CreateOrderWithItemsParams{
+		Code:       "MC-20260717-FK01",
+		Channel:    "website",
+		CustomerID: badCustomer,
+		Items:      []store.OrderItemInput{{ProductID: p, Quantity: 1}},
+	})
+	if err == nil {
+		t.Fatal("mong đợi lỗi FK violation, nhận nil")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23503" {
+		t.Fatalf("err = %v, want FK violation 23503", err)
+	}
+	after, err := q.CountOrders(ctx)
+	if err != nil {
+		t.Fatalf("CountOrders after: %v", err)
+	}
+	if after != before {
+		t.Errorf("CountOrders = %d, want %d (rollback khi FK sai)", after, before)
 	}
 }
 

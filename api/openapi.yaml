@@ -828,7 +828,9 @@ components:
           description: Sản phẩm đặt. Không tồn tại → 400 (rollback toàn bộ đơn).
         quantity:
           type: integer
-          description: Số lượng, phải > 0
+          minimum: 1
+          maximum: 10000
+          description: Số lượng, phải > 0 và ≤ 10000
     OrderInput:
       type: object
       required:
@@ -866,7 +868,8 @@ components:
         items:
           type: array
           minItems: 1
-          description: Ít nhất 1 dòng đơn
+          maxItems: 100
+          description: Ít nhất 1 dòng đơn, tối đa 100
           items:
             $ref: "#/components/schemas/OrderItemInput"
     Order:

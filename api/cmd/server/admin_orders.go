@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -26,6 +27,21 @@ const (
 	ordersDefaultLimit = 20
 	ordersMaxLimit     = 100
 )
+
+// Trần chống lạm dụng số/tài chính (đơn hàng đụng tiền — phải chặt):
+//   - maxOrderItems: số dòng tối đa mỗi đơn. Chặn body ~1000+ item, mỗi item 1
+//     GetProductByID tuần tự trong tx mở (DoS).
+//   - maxOrderItemQuantity: số lượng tối đa mỗi dòng. Validate TRƯỚC khi ép int32 —
+//     client gửi quantity > MaxInt32 (Go int 64-bit) sẽ bị int32() cắt âm thầm thành
+//     số nhỏ nếu không chặn ở đây → đơn sai số lượng.
+const (
+	maxOrderItems        = 100
+	maxOrderItemQuantity = 10000
+)
+
+// pgForeignKeyViolation là mã lỗi Postgres cho vi phạm khóa ngoại (customer_id trỏ
+// tới customer không tồn tại).
+const pgForeignKeyViolation = "23503"
 
 // validOrderStatuses khớp CHECK constraint orders.status (0007_orders). Validate ở
 // handler để trả 400 thân thiện thay vì 500 từ DB (REQ-ORD-002).
@@ -134,10 +150,17 @@ func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "đơn phải có ít nhất 1 sản phẩm")
 		return
 	}
+	if len(in.Items) > maxOrderItems {
+		httpx.WriteError(w, http.StatusBadRequest, "đơn có quá nhiều dòng (tối đa 100)")
+		return
+	}
 	items := make([]store.OrderItemInput, 0, len(in.Items))
 	for _, it := range in.Items {
-		if it.Quantity <= 0 {
-			httpx.WriteError(w, http.StatusBadRequest, "số lượng phải lớn hơn 0")
+		// Chặn TRƯỚC khi ép int32: quantity là Go int (64-bit). Không chặn trần thì
+		// client gửi quantity > MaxInt32 (vd 2^32+5) qua check >0 nhưng int32() cắt
+		// còn số nhỏ → đơn tạo SAI số lượng âm thầm (data corruption tiền).
+		if it.Quantity <= 0 || it.Quantity > maxOrderItemQuantity {
+			httpx.WriteError(w, http.StatusBadRequest, "số lượng mỗi dòng phải từ 1 đến 10000")
 			return
 		}
 		items = append(items, store.OrderItemInput{
@@ -192,6 +215,14 @@ func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request) {
 			return
 		case errors.Is(err, store.ErrDiscountExceedsSubtotal):
 			httpx.WriteError(w, http.StatusBadRequest, "giảm giá vượt quá tổng tiền hàng")
+			return
+		case errors.Is(err, store.ErrOrderAmountTooLarge):
+			httpx.WriteError(w, http.StatusBadRequest, "giá trị đơn hàng quá lớn")
+			return
+		case isForeignKeyViolation(err):
+			// customer_id là uuid hợp lệ nhưng không có trong customers → FK 23503.
+			// Trả 400 (lỗi dữ liệu client) thay vì 500.
+			httpx.WriteError(w, http.StatusBadRequest, "khách hàng không tồn tại")
 			return
 		case isUniqueViolation(err) && attempt < orderCreateMaxRetries:
 			continue
@@ -287,6 +318,13 @@ func (s *Server) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, id op
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, toAPIOrder(row))
+}
+
+// isForeignKeyViolation cho biết err là vi phạm ràng buộc FOREIGN KEY của Postgres
+// (customer_id trỏ tới customer không tồn tại).
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == pgForeignKeyViolation
 }
 
 // optDate map *openapi_types.Date (nullable) → pgtype.Date.

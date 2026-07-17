@@ -30,6 +30,16 @@ var ErrInvalidQuantity = errors.New("số lượng phải lớn hơn 0")
 // Handler map → 400.
 var ErrDiscountExceedsSubtotal = errors.New("giảm giá vượt quá tổng tiền hàng")
 
+// ErrOrderAmountTooLarge báo tổng tiền hàng vượt trần cho phép — chặn TRÀN int64
+// (bigint) khi giá × số lượng dồn lại quá lớn, tránh subtotal/total sai hoặc âm.
+// Handler map → 400.
+var ErrOrderAmountTooLarge = errors.New("giá trị đơn hàng quá lớn")
+
+// MaxOrderAmount là trần tổng tiền hàng một đơn (VND). 10 tỷ VND đủ rộng cho mọi
+// đơn bánh trung thu thực tế nhưng cách xa MaxInt64 → mọi phép cộng dồn subtotal
+// không thể tràn. Vượt trần → ErrOrderAmountTooLarge.
+const MaxOrderAmount int64 = 10_000_000_000
+
 // OrderItemInput là một dòng đơn admin gửi lên: sản phẩm + số lượng. Giá KHÔNG lấy
 // từ client — snapshot từ product tại thời điểm tạo (REQ-ORD-004).
 type OrderItemInput struct {
@@ -99,7 +109,22 @@ func CreateOrderWithItems(ctx context.Context, db Beginner, arg CreateOrderWithI
 			return OrderWithItems{}, fmt.Errorf("create order: get product: %w", err)
 		}
 		snaps = append(snaps, snap{productID: it.ProductID, name: p.Name, unitPrice: p.Price, quantity: it.Quantity})
-		subtotal += p.Price * int64(it.Quantity)
+
+		// Chặn TRÀN int64: kiểm trước khi nhân/cộng. Quantity đã được handler chặn
+		// theo trần (>0, ≤ maxOrderItemQuantity) nên int64(it.Quantity) an toàn; ở đây
+		// so sánh với MaxOrderAmount còn lại để một giá/số lượng lớn không kéo subtotal
+		// tràn thành số âm (qua CHECK >= 0) hoặc sai lệch tiền.
+		if p.Price < 0 {
+			return OrderWithItems{}, ErrOrderAmountTooLarge
+		}
+		if it.Quantity > 0 && p.Price > MaxOrderAmount/int64(it.Quantity) {
+			return OrderWithItems{}, ErrOrderAmountTooLarge
+		}
+		lineTotal := p.Price * int64(it.Quantity)
+		if subtotal > MaxOrderAmount-lineTotal {
+			return OrderWithItems{}, ErrOrderAmountTooLarge
+		}
+		subtotal += lineTotal
 	}
 
 	if arg.Discount < 0 {

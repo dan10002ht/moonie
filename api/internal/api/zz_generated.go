@@ -239,7 +239,7 @@ type OrderInput struct {
 	// Discount Giảm giá VND ≥ 0 (mặc định 0). Vượt tổng tiền hàng → 400.
 	Discount *int64 `json:"discount"`
 
-	// Items Ít nhất 1 dòng đơn
+	// Items Ít nhất 1 dòng đơn, tối đa 100
 	Items []OrderItemInput `json:"items"`
 	Note  *string          `json:"note"`
 }
@@ -265,7 +265,7 @@ type OrderItemInput struct {
 	// ProductId Sản phẩm đặt. Không tồn tại → 400 (rollback toàn bộ đơn).
 	ProductId openapi_types.UUID `json:"product_id"`
 
-	// Quantity Số lượng, phải > 0
+	// Quantity Số lượng, phải > 0 và ≤ 10000
 	Quantity int `json:"quantity"`
 }
 

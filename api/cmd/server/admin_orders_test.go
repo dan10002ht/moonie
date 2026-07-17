@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -202,6 +203,76 @@ func TestCreateOrderValidation(t *testing.T) {
 				t.Errorf("store được gọi %d lần, want 0 (validate trước tx)", f.calls)
 			}
 		})
+	}
+}
+
+// TestCreateOrderQuantityOverflow: quantity > MaxInt32 (Go int 64-bit) → 400, KHÔNG
+// gọi store, KHÔNG bị int32() cắt âm thầm thành số nhỏ (chống corruption tiền).
+func TestCreateOrderQuantityOverflow(t *testing.T) {
+	pid := openapi_types.UUID(uuid.New()).String()
+	// 2^32 + 5 = 4294967301: qua check >0 nhưng int32() sẽ cắt còn 5 nếu không chặn.
+	f := &fakeOrderCreator{}
+	srv := &Server{orderCreate: f}
+	body := `{"channel":"website","items":[{"product_id":"` + pid + `","quantity":4294967301}]}`
+	rec := httptest.NewRecorder()
+	srv.CreateOrder(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(body)))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+	if f.calls != 0 {
+		t.Errorf("store gọi %d lần, want 0 (chặn trước khi ép int32)", f.calls)
+	}
+}
+
+// TestCreateOrderTooManyItems: > maxOrderItems dòng → 400, KHÔNG gọi store.
+func TestCreateOrderTooManyItems(t *testing.T) {
+	pid := openapi_types.UUID(uuid.New()).String()
+	var b strings.Builder
+	b.WriteString(`{"channel":"website","items":[`)
+	for i := 0; i < maxOrderItems+1; i++ {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		b.WriteString(`{"product_id":"` + pid + `","quantity":1}`)
+	}
+	b.WriteString(`]}`)
+	f := &fakeOrderCreator{}
+	srv := &Server{orderCreate: f}
+	rec := httptest.NewRecorder()
+	srv.CreateOrder(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(b.String())))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+	if f.calls != 0 {
+		t.Errorf("store gọi %d lần, want 0 (chặn > %d dòng)", f.calls, maxOrderItems)
+	}
+}
+
+// TestCreateOrderAmountTooLarge: store trả ErrOrderAmountTooLarge → 400.
+func TestCreateOrderAmountTooLarge(t *testing.T) {
+	pid := openapi_types.UUID(uuid.New()).String()
+	f := &fakeOrderCreator{err: store.ErrOrderAmountTooLarge}
+	srv := &Server{orderCreate: f}
+	body := `{"channel":"website","items":[{"product_id":"` + pid + `","quantity":9999}]}`
+	rec := httptest.NewRecorder()
+	srv.CreateOrder(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(body)))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestCreateOrderCustomerFKViolation: customer_id uuid hợp lệ nhưng không tồn tại →
+// store trả FK violation (23503) → handler map 400 (KHÔNG 500).
+func TestCreateOrderCustomerFKViolation(t *testing.T) {
+	pid := openapi_types.UUID(uuid.New()).String()
+	cid := openapi_types.UUID(uuid.New()).String()
+	f := &fakeOrderCreator{err: &pgconn.PgError{Code: pgForeignKeyViolation}}
+	srv := &Server{orderCreate: f}
+	body := `{"channel":"website","customer_id":"` + cid + `","items":[{"product_id":"` + pid + `","quantity":1}]}`
+	rec := httptest.NewRecorder()
+	srv.CreateOrder(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(body)))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code = %d, want 400; body=%s", rec.Code, rec.Body.String())
 	}
 }
 
