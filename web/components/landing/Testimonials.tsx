@@ -1,3 +1,5 @@
+import { Reveal } from "./Reveal";
+
 const REVIEWS = [
   {
     quote:
@@ -27,18 +29,19 @@ export function Testimonials() {
   return (
     <section className="px-6 py-[clamp(56px,8vw,96px)]">
       <div className="mx-auto max-w-[1160px]">
-        <div className="mx-auto mb-11 max-w-[560px] text-center">
+        <Reveal className="mx-auto mb-11 max-w-[560px] text-center">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-gold-deep">
             Khách hàng nói gì
           </div>
           <h2 className="m-0 font-serif text-[clamp(28px,4vw,38px)] font-semibold tracking-[-0.01em] text-navy">
             Được tin chọn mỗi mùa trăng
           </h2>
-        </div>
+        </Reveal>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-[22px]">
-          {REVIEWS.map((r) => (
-            <div
+          {REVIEWS.map((r, i) => (
+            <Reveal
               key={r.name}
+              delay={i * 80}
               className="rounded-[8px] border border-border bg-white p-7"
             >
               <div className="mb-[14px] text-[15px] tracking-[2px] text-gold">
@@ -58,7 +61,7 @@ export function Testimonials() {
                   <div className="text-[12.5px] text-ink-faint">{r.place}</div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>

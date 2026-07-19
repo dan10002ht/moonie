@@ -149,3 +149,74 @@
     font-family: var(--font-sans), system-ui, sans-serif;
   }
 }
+
+/* ── Landing animations (chỉ transform + opacity) ─────────────────────────
+   Hạ tầng cho scroll-reveal, hero entrance và trang trí drift. Nguồn: BRIEF
+   task "landing-anim". KHÔNG animate width/height/margin/top/left. */
+
+/* Scroll reveal — dùng cùng <Reveal> (IntersectionObserver thêm .is-visible). */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero entrance — fade + trượt lên, chạy on-load (không cần observer). */
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-in {
+  opacity: 0;
+  animation: hero-in 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* Trôi rất nhẹ cho vòng tròn gold trang trí ở Hero. */
+@keyframes drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(6px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.drift {
+  animation: drift 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Reduced-motion — CUỐI CÙNG, tắt hết motion, ép về trạng thái cuối. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .hero-in {
+    opacity: 1;
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

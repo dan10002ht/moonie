@@ -1,4 +1,5 @@
 import { ChatIcon, CheckIcon, PhoneIcon } from "./icons";
+import { Reveal } from "./Reveal";
 
 const PERKS = [
   "In / khắc logo & thông điệp thương hiệu lên hộp",
@@ -14,10 +15,10 @@ export function CorporateGifting() {
       id="corporate"
       className="relative overflow-hidden bg-navy text-white"
     >
-      <div className="pointer-events-none absolute -bottom-[120px] -left-[100px] h-[340px] w-[340px] rounded-full border border-gold/[0.16]" />
+      <div className="drift pointer-events-none absolute -bottom-[120px] -left-[100px] h-[340px] w-[340px] rounded-full border border-gold/[0.16]" />
       <div className="mx-auto max-w-[1160px] px-6 py-[clamp(56px,8vw,100px)]">
         <div className="grid grid-cols-2 items-center gap-14 max-[920px]:grid-cols-1">
-          <div>
+          <Reveal>
             <div className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-gold">
               Quà biếu doanh nghiệp
             </div>
@@ -63,16 +64,19 @@ export function CorporateGifting() {
                 <span className="tabular-nums lining-nums">0938 168 168</span>
               </a>
             </div>
-          </div>
+          </Reveal>
 
-          <div className="relative aspect-[5/4] overflow-hidden rounded-[10px] bg-navy-light shadow-[0_40px_80px_-34px_rgba(0,0,0,0.6)] max-[920px]:order-first">
+          <Reveal
+            delay={120}
+            className="relative aspect-[5/4] overflow-hidden rounded-[10px] bg-navy-light shadow-[0_40px_80px_-34px_rgba(0,0,0,0.6)] max-[920px]:order-first"
+          >
             <div
               className="flex h-full w-full items-center justify-center px-4 text-center text-[13px] text-navy-mist/70"
               aria-label="Ảnh set quà doanh nghiệp có logo"
             >
               Ảnh set quà doanh nghiệp có logo
             </div>
-          </div>
+          </Reveal>
         </div>
       </div>
     </section>

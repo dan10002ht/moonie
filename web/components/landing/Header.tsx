@@ -25,7 +25,7 @@ export function Header() {
             <a
               key={link.href}
               href={link.href}
-              className="text-[14.5px] font-medium text-ink-nav hover:text-navy"
+              className="relative text-[14.5px] font-medium text-ink-nav transition-colors duration-200 hover:text-navy after:absolute after:-bottom-1 after:left-0 after:h-[1.5px] after:w-full after:origin-left after:scale-x-0 after:bg-gold after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100"
             >
               {link.label}
             </a>
@@ -44,7 +44,7 @@ export function Header() {
             type="button"
             data-open-contact="1"
             /* TODO(Task 4): mở bottom sheet liên hệ */
-            className="inline-flex cursor-pointer items-center gap-2 rounded-[5px] bg-steel px-5 py-[11px] font-sans text-sm font-bold text-white shadow-[0_8px_20px_-8px_rgba(42,53,87,0.55)] hover:bg-steel-dark max-[920px]:hidden"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-[5px] bg-steel px-5 py-[11px] font-sans text-sm font-bold text-white shadow-[0_8px_20px_-8px_rgba(42,53,87,0.55)] transition-transform duration-200 ease-out hover:scale-[1.02] hover:bg-steel-dark max-[920px]:hidden"
           >
             <ChatIcon size={16} />
             Liên hệ đặt hàng

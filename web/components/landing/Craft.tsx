@@ -1,3 +1,5 @@
+import { Reveal } from "./Reveal";
+
 const STEPS = [
   {
     no: "01",
@@ -22,15 +24,15 @@ export function Craft() {
     <section id="story" className="px-6 py-[clamp(56px,8vw,104px)]">
       <div className="mx-auto max-w-[1160px]">
         <div className="grid grid-cols-[0.9fr_1.1fr] items-center gap-14 max-[920px]:grid-cols-1">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[10px] bg-navy-tint shadow-[0_30px_60px_-34px_rgba(4,30,79,0.35)]">
+          <Reveal className="relative aspect-[4/5] overflow-hidden rounded-[10px] bg-navy-tint shadow-[0_30px_60px_-34px_rgba(4,30,79,0.35)]">
             <div
               className="flex h-full w-full items-center justify-center px-4 text-center text-[13px] text-ink-faint"
               aria-label="Ảnh nghệ nhân làm bánh"
             >
               Ảnh nghệ nhân làm bánh
             </div>
-          </div>
-          <div>
+          </Reveal>
+          <Reveal delay={120}>
             <div className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-gold-deep">
               Câu chuyện Mooni
             </div>
@@ -59,7 +61,7 @@ export function Craft() {
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
         </div>
       </div>
     </section>

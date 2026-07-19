@@ -13,33 +13,48 @@ export function Hero() {
       id="top"
       className="relative overflow-hidden bg-navy text-white"
     >
-      <div className="pointer-events-none absolute -right-[120px] -top-[90px] h-[420px] w-[420px] rounded-full border border-gold/[0.22]" />
-      <div className="pointer-events-none absolute -bottom-[160px] right-[60px] h-[300px] w-[300px] rounded-full border border-gold/[0.14]" />
+      <div className="drift pointer-events-none absolute -right-[120px] -top-[90px] h-[420px] w-[420px] rounded-full border border-gold/[0.22]" />
+      <div
+        className="drift pointer-events-none absolute -bottom-[160px] right-[60px] h-[300px] w-[300px] rounded-full border border-gold/[0.14]"
+        style={{ animationDelay: "-6s" }}
+      />
 
       <div className="mx-auto max-w-[1160px] px-6 py-[clamp(48px,7vw,88px)]">
         <div className="grid grid-cols-[1.05fr_0.95fr] items-center gap-[60px] max-[920px]:grid-cols-1 max-[920px]:gap-10">
           <div>
-            <div className="mb-[22px] text-xs font-semibold uppercase tracking-[0.3em] text-gold">
+            <div
+              className="hero-in mb-[22px] text-xs font-semibold uppercase tracking-[0.3em] text-gold"
+              style={{ animationDelay: "0ms" }}
+            >
               Bánh trung thu thủ công cao cấp
             </div>
-            <h1 className="m-0 font-serif text-[clamp(40px,6.4vw,72px)] font-bold leading-[1.04] tracking-[-0.01em]">
+            <h1
+              className="hero-in m-0 font-serif text-[clamp(40px,6.4vw,72px)] font-bold leading-[1.04] tracking-[-0.01em]"
+              style={{ animationDelay: "90ms" }}
+            >
               Trọn vị trăng rằm,
               <br />
               <span className="font-normal italic text-gold">
                 gói trọn tấm lòng
               </span>
             </h1>
-            <p className="mt-[26px] max-w-[520px] text-[clamp(16px,1.7vw,18px)] leading-[1.65] text-navy-fog">
+            <p
+              className="hero-in mt-[26px] max-w-[520px] text-[clamp(16px,1.7vw,18px)] leading-[1.65] text-navy-fog"
+              style={{ animationDelay: "180ms" }}
+            >
               Từng chiếc bánh làm thủ công mỗi ngày, đóng trong hộp quà thiết kế
               riêng cho mùa trăng. Đặt hàng trực tiếp qua Zalo hoặc hotline — tư
               vấn &amp; chốt đơn trong ít phút.
             </p>
-            <div className="mt-[34px] flex flex-wrap gap-[14px] max-[920px]:flex-col max-[920px]:items-stretch">
+            <div
+              className="hero-in mt-[34px] flex flex-wrap gap-[14px] max-[920px]:flex-col max-[920px]:items-stretch"
+              style={{ animationDelay: "270ms" }}
+            >
               <button
                 type="button"
                 data-open-contact="1"
                 /* TODO(Task 4): mở bottom sheet liên hệ */
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[5px] bg-sky px-7 py-[15px] font-sans text-[15px] font-bold text-steel-dark shadow-[0_12px_28px_-12px_rgba(0,0,0,0.5)] hover:bg-white"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[5px] bg-sky px-7 py-[15px] font-sans text-[15px] font-bold text-steel-dark shadow-[0_12px_28px_-12px_rgba(0,0,0,0.5)] transition-transform duration-200 ease-out hover:scale-[1.02] hover:bg-white"
               >
                 <ChatIcon size={18} />
                 Liên hệ đặt hàng
@@ -51,7 +66,10 @@ export function Hero() {
                 Xem bộ sưu tập
               </a>
             </div>
-            <div className="mt-[38px] flex flex-wrap gap-6">
+            <div
+              className="hero-in mt-[38px] flex flex-wrap gap-6"
+              style={{ animationDelay: "360ms" }}
+            >
               {FEATURES.map((f) => (
                 <div
                   key={f}
@@ -66,7 +84,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="relative">
+          <div className="hero-in relative" style={{ animationDelay: "240ms" }}>
             <div className="relative aspect-[4/5] overflow-hidden rounded-[10px] bg-navy-light shadow-[0_40px_80px_-30px_rgba(0,0,0,0.6)]">
               {/* Placeholder ảnh hộp bánh cao cấp — ảnh thật thêm sau qua admin */}
               <div

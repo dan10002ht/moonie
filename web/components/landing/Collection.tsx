@@ -2,6 +2,7 @@ import type { Product } from "@/lib/api";
 import { getProducts } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { ChatIcon } from "./icons";
+import { Reveal } from "./Reveal";
 import {
   ComparePrice,
   MarketingBadge,
@@ -29,7 +30,7 @@ export async function Collection() {
   return (
     <section id="collection" className="px-6 py-[clamp(56px,8vw,104px)]">
       <div className="mx-auto max-w-[1160px]">
-        <div className="mx-auto mb-12 max-w-[600px] text-center">
+        <Reveal className="mx-auto mb-12 max-w-[600px] text-center">
           <div className="mb-[14px] text-xs font-semibold uppercase tracking-[0.28em] text-gold-deep">
             Bộ sưu tập mùa trăng 2026
           </div>
@@ -40,7 +41,7 @@ export async function Collection() {
             Ba dòng hộp cho ba dịp trao gửi — từ món quà biếu trang trọng đến hộp
             mini ấm cúng cho gia đình.
           </p>
-        </div>
+        </Reveal>
 
         {boxes.length === 0 ? (
           <p className="text-center text-[15px] text-ink-soft">
@@ -48,18 +49,18 @@ export async function Collection() {
           </p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(290px,1fr))] gap-[22px]">
-            {boxes.map((box) => {
+            {boxes.map((box, i) => {
               const soldOut = box.status === "sold_out";
               return (
+                <Reveal key={box.id} delay={i * 80} className="flex">
                 <div
-                  key={box.id}
-                  className={`flex flex-col overflow-hidden rounded-[8px] border border-border-strong bg-white transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_24px_44px_-26px_rgba(4,30,79,0.4)] ${
+                  className={`group flex flex-1 flex-col overflow-hidden rounded-[8px] border border-border-strong bg-white transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-gold/60 hover:shadow-[0_24px_44px_-26px_rgba(4,30,79,0.4)] ${
                     soldOut ? "opacity-60" : ""
                   }`}
                 >
-                  <div className="relative h-[230px] bg-navy-tint">
+                  <div className="relative h-[230px] overflow-hidden bg-navy-tint">
                     <div
-                      className="flex h-full w-full items-center justify-center px-4 text-center text-[13px] text-ink-faint"
+                      className="flex h-full w-full items-center justify-center px-4 text-center text-[13px] text-ink-faint transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       aria-label={`Ảnh ${box.name}`}
                     >
                       Ảnh {box.name}
@@ -96,6 +97,7 @@ export async function Collection() {
                     </button>
                   </div>
                 </div>
+                </Reveal>
               );
             })}
           </div>
