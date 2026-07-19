@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-19
+
+### Landing — Animation (theo yêu cầu chủ dự án)
+- **Animation tinh tế cho landing** — thêm chuyển động cao cấp không hại UX, chỉ `transform`+`opacity` (GPU 60fps), không thêm dependency. Hạ tầng: `web/components/landing/Reveal.tsx` (client, IntersectionObserver one-shot threshold 0.15, tôn trọng `prefers-reduced-motion`) + keyframes/utilities trong `web/app/globals.css` (`.reveal`, `hero-in`, `drift`, và block `@media (prefers-reduced-motion: reduce)` tắt toàn bộ motion). Áp dụng: Hero entrance stagger + vòng tròn gold trôi (Hero.tsx); scroll-reveal so le cho Collection/Flavors/Testimonials/Craft/CorporateGifting; hover product-card nhấc -4px + shadow + viền gold + ảnh zoom 1.03; nav-link gạch chân gold (scaleX) + CTA scale 1.02 (Header.tsx). `tsc --noEmit` sạch. design-evaluator PASS 9/10 cả 4 tiêu chí; reduced-motion PASS bằng emulation (0 phần tử kẹt opacity:0). Screenshot: `docs/reports/screenshots/2026-07-19-landing-animation/`.
+
 ## 2026-07-18
 
 ### CI

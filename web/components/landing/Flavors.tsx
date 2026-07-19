@@ -2,6 +2,7 @@ import type { Product } from "@/lib/api";
 import { getProducts } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { ComparePrice, MarketingBadge, Subtitle } from "./product-card";
+import { Reveal } from "./Reveal";
 
 /**
  * Tagline card = đoạn cuối của description (kicker "Bánh nướng · 180g" giờ lấy từ
@@ -33,7 +34,7 @@ export async function Flavors() {
   return (
     <section className="border-y border-border bg-white px-6 py-[clamp(56px,8vw,96px)]">
       <div className="mx-auto max-w-[1160px]">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
+        <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-5">
           <div>
             <div className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-gold-deep">
               Chọn nhân bánh lẻ
@@ -46,7 +47,7 @@ export async function Flavors() {
             Có thể đặt lẻ hoặc phối hộp theo ý bạn — nhắn kênh liên hệ để được tư
             vấn.
           </p>
-        </div>
+        </Reveal>
 
         {cakes.length === 0 ? (
           <p className="text-center text-[15px] text-ink-soft">
@@ -54,19 +55,19 @@ export async function Flavors() {
           </p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-5">
-            {cakes.map((cake) => {
+            {cakes.map((cake, i) => {
               const soldOut = cake.status === "sold_out";
               const tagline = taglineOf(cake.description);
               return (
+                <Reveal key={cake.id} delay={i * 80} className="flex">
                 <div
-                  key={cake.id}
-                  className={`flex flex-col overflow-hidden rounded-[8px] border border-border-strong bg-white ${
+                  className={`group flex flex-1 flex-col overflow-hidden rounded-[8px] border border-border-strong bg-white transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-gold/60 hover:shadow-[0_20px_38px_-24px_rgba(4,30,79,0.4)] ${
                     soldOut ? "opacity-60" : ""
                   }`}
                 >
-                  <div className="relative h-[170px] bg-navy-tint">
+                  <div className="relative h-[170px] overflow-hidden bg-navy-tint">
                     <div
-                      className="flex h-full w-full items-center justify-center px-3 text-center text-[12px] text-ink-faint"
+                      className="flex h-full w-full items-center justify-center px-3 text-center text-[12px] text-ink-faint transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       aria-label={`Ảnh ${cake.name}`}
                     >
                       Ảnh {cake.name}
@@ -101,6 +102,7 @@ export async function Flavors() {
                     </div>
                   </div>
                 </div>
+                </Reveal>
               );
             })}
           </div>
